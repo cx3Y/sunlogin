@@ -1,0 +1,151 @@
+{
+    "entity":{
+        "sensor": {
+            "power":{
+                "name":"Power"
+            },
+            "current":{
+                "name":"Current"
+            },
+            "voltage":{
+                "name":"Voltage"
+            },
+            "electricity_hour":{
+                "name":"Electricity(hour)"
+            },
+            "electricity_day":{
+                "name":"Electricity(day)"
+            },
+            "electricity_week":{
+                "name":"Electricity(week)"
+            },
+            "electricity_month":{
+                "name":"Electricity(mounth)"
+            },
+            "electricity_lastmonth":{
+                "name":"Electricity(last month)"
+            }
+        },
+        "switch": {
+            "led":{
+                "name":"Led"
+            },
+            "def_st":{
+                "name":"Default"
+            },
+            "relay0":{
+                "name":"Relay0"
+            },
+            "relay1":{
+                "name":"Relay1"
+            },
+            "relay2":{
+                "name":"Relay2"
+            },
+            "relay3":{
+                "name":"Relay3"
+            },
+            "relay4":{
+                "name":"Relay4"
+            },
+            "relay5":{
+                "name":"Relay5"
+            },
+            "relay6":{
+                "name":"Relay6"
+            },
+            "relay7":{
+                "name":"Relay7"
+            },
+            "remote":{
+                "name":"Remote"
+            }
+        }
+    },
+    "config": {
+        "abort": {
+            "already_configured": "Device has already been configured.",
+            "unsupported_device_type": "Unsupported device type!"
+        },
+        "error": {
+            "authentication_failed": "Failed to authenticate.\n{msg}",
+            "device_list_failed": "Failed to retrieve device list.\n{msg}",
+            "cannot_connect": "Cannot connect to device. Verify that address is correct.",
+            "invalid_auth": "Failed to authenticate with password. Verify that username and password are correct.",
+            "unknown": "An unknown error occurred. See log for details.",
+            "switch_already_configured": "Switch with this ID has already been configured."
+        },
+        "progress": {
+            "qrcode1": "The QR code is loading and it takes about 10 to 20 seconds",
+            "qrcode2": "Please use Oray's APP to scan the QR code to log in\n{msg}",
+            "qrcode3": "Retrieving the device list, it takes about 10 to 20 seconds\n\nNote: If the configuration is successful but no device, please set it up again."
+        },
+        "step": {
+            "user": {
+                "title": "Main Configuration",
+                "description": "Please select a login method",
+                "menu_options": {
+                    "local": "Add the device by IP address",
+                    "password": "Log in with your password",
+                    "sms": "Log in with an SMS verification code",
+                    "qrcode": "Scan the QR code to log in"
+                }
+            },
+            "local": {
+                "title": "Local Configuration",
+                "description": "Enter the IP address of the device",
+                "data": {
+                    "ip_address": "IP address"
+                }
+            },
+            "password": {
+                "title": "SunLogin Configuration",
+                "description": "Input the credentials for SunLogin\n{msg}",
+                "data": {
+                    "username": "Username",
+                    "password": "Password"
+                }
+            },
+            "sms": {
+                "title": "SunLogin Configuration",
+                "description": "Input the credentials for SunLogin\n{msg}",
+                "data": {
+                    "username": "Username",
+                    "code": "Verification Code"
+                }
+            },
+            "power_outlet": {
+                "title": "Add subswitch",
+                "description": "You are about to add subswitch number `{number}`. If you want to add another, tick `Add another switch` before continuing.",
+                "data": {
+                    "id": "ID",
+                    "name": "Name",
+                    "friendly_name": "Friendly name",
+                    "current": "Current",
+                    "current_consumption": "Current Consumption",
+                    "voltage": "Voltage",
+                    "add_another_switch": "Add another switch"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "SunLogin Configuration",
+                "description": "Please select the desired actionSSSS.",
+                "data": {
+                    "add_device": "Add a new device",
+                    "edit_device": "Edit a device",
+                    "delete_device": "Delete a device",
+                    "setup_cloud": "Reconfigure Cloud API account"
+                }
+            },
+            "yaml_import": {
+                "title": "Not Supported",
+                "description": "Options cannot be edited when configured via YAML."
+            }
+        }
+    },
+    "title": "SunLogin"
+}

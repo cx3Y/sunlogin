@@ -1,0 +1,151 @@
+{
+    "entity":{
+        "sensor": {
+            "power":{
+                "name":"当前功率"
+            },
+            "current":{
+                "name":"当前电流"
+            },
+            "voltage":{
+                "name":"当前电压"
+            },
+            "electricity_hour":{
+                "name":"小时电量"
+            },
+            "electricity_day":{
+                "name":"今日电量"
+            },
+            "electricity_week":{
+                "name":"本周电量"
+            },
+            "electricity_month":{
+                "name":"本月电量"
+            },
+            "electricity_lastmonth":{
+                "name":"上月电量"
+            }
+        },
+        "switch": {
+            "led":{
+                "name":"指示灯"
+            },
+            "def_st":{
+                "name":"断电记忆"
+            },
+            "relay0":{
+                "name":"开关1"
+            },
+            "relay1":{
+                "name":"开关2"
+            },
+            "relay2":{
+                "name":"开关3"
+            },
+            "relay3":{
+                "name":"开关4"
+            },
+            "relay4":{
+                "name":"开关5"
+            },
+            "relay5":{
+                "name":"开关6"
+            },
+            "relay6":{
+                "name":"开关7"
+            },
+            "relay7":{
+                "name":"开关8"
+            },
+            "remote":{
+                "name":"远程控制"
+            }
+        }
+    },
+    "config": {
+        "abort": {
+            "already_configured": "设备已配置。",
+            "unsupported_device_type": "不支持的设备类型！"
+        },
+        "error": {
+            "authentication_failed": "身份验证失败。\n{msg}",
+            "device_list_failed": "无法获取设备列表。\n{msg}",
+            "cannot_connect": "无法连接到设备，验证地址是否正确。",
+            "invalid_auth": "无法使用密码进行身份验证，验证用户名和密码是否正确。",
+            "unknown": "出现未知错误，有关详细信息，请参阅日志。",
+            "switch_already_configured": "已配置具有此ID的开关。"
+        },
+        "progress": {
+            "qrcode1": "正在加载二维码，大约需要10-20秒。",
+            "qrcode2": "请使用贝锐旗下APP扫码登录\n{msg}",
+            "qrcode3": "正在获取设备列表，大约需要10-20秒。\n\n提示：网络问题可能导致配置成功，但是不显示设备"
+        },
+        "step": {
+            "user": {
+                "title": "登录方式",
+                "description": "请选择登录方式",
+                "menu_options": {
+                    "local": "使用IP添加设备",
+                    "password": "密码登录",
+                    "sms": "短信验证码登录",
+                    "qrcode": "扫码登录"
+                }
+            },
+            "local": {
+                "title": "本地配置",
+                "description": "输入设备IP",
+                "data": {
+                    "ip_address": "IP地址"
+                }
+            },
+            "password": {
+                "title": "向日葵账号",
+                "description": "输入向日葵账号密码\n{msg}",
+                "data": {
+                    "username": "用户名",
+                    "password": "密码"
+                }
+            },
+            "sms": {
+                "title": "向日葵账号",
+                "description": "输入手机号和验证码\n{msg}",
+                "data": {
+                    "username": "手机号",
+                    "code": "验证码"
+                }
+            },
+            "power_outlet": {
+                "title": "添加子设备",
+                "description": "您将要添加子开关编号 `{number}`。如果要添加另一个开关，请勾选 “添加另一个开关”，然后再继续。",
+                "data": {
+                    "id": "ID",
+                    "name": "名称",
+                    "friendly_name": "设备名称",
+                    "current": "当前",
+                    "current_consumption": "电流消耗",
+                    "voltage": "电压",
+                    "add_another_switch": "添加另一个开关"
+                }
+            }
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "向日葵配置",
+                "description": "请选择所需的操作。",
+                "data": {
+                    "add_device": "Add a new device",
+                    "edit_device": "Edit a device",
+                    "delete_device": "Delete a device",
+                    "setup_cloud": "Reconfigure Cloud API account"
+                }
+            },
+            "yaml_import": {
+                "title": "不支持",
+                "description": "通过 YAML 配置时，无法编辑选项。"
+            }
+        }
+    },
+    "title": "贝锐向日葵"
+}

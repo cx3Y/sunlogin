@@ -1,0 +1,16 @@
+{
+    "codeowners": ["@cx3Y"],
+    "config_flow": true,
+    "dependencies": ["http", "network"],
+    "documentation": "https://github.com/user/my_component/",
+    "domain": "sunlogin",
+    "iot_class": "cloud_polling",
+    "name": "SunLogin integration",
+    "requirements": [
+        "PyQRCode==1.2.1",
+        "pypng==0.20220715.0"
+    ],
+    "integration_type": "device",
+    "version": "2.2.3"
+}
+  
