@@ -1,17 +1,17 @@
 {
+    "domain": "sunlogin",
+    "name": "SunLogin integration",
     "codeowners": ["@cx3Y"],
     "config_flow": true,
     "dependencies": ["http", "network"],
     "documentation": "https://github.com/cx3Y/sunlogin",
-    "issue_tracker": "https://github.com/cx3Y/sunlogin/issues",
-    "domain": "sunlogin",
+    "integration_type": "device",
     "iot_class": "cloud_polling",
-    "name": "SunLogin integration",
+    "issue_tracker": "https://github.com/cx3Y/sunlogin/issues",
     "requirements": [
         "PyQRCode==1.2.1",
         "pypng==0.20220715.0"
     ],
-    "integration_type": "device",
     "version": "2.2.3"
 }
   
