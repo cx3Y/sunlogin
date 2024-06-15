@@ -1,5 +1,4 @@
-
-name: Validate
+name: HACS Validate
 
 on:
   push:
@@ -17,3 +16,5 @@ jobs:
         uses: "hacs/action@main"
         with:
           category: "integration"
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
