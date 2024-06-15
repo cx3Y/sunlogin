@@ -287,6 +287,7 @@ def plug_status_process(data):
         index = relay_status['index']
         value = relay_status['status']
         status[f"relay{index}"]= value
+
     if (led := data.get(DP_LED)) is not None:
         status[DP_LED] = led
     
@@ -470,7 +471,7 @@ class SunLoginDevice(ABC):
     config = None
     api = None
     update_manager = None
-    _entities = list()
+    _entities = None
     _sn = BLANK_SN
     _fw_version = "0.0.0"
         # self.reset_jobs: list[CALLBACK_TYPE] = []
@@ -557,10 +558,10 @@ class SunLoginDevice(ABC):
 class SunloginPlug(SunLoginDevice, ABC):
     
     _ip = None
-    _status = dict()
-    new_data = dict()
+    _status = None
+    new_data = None
     update_manager = None
-    update_flag = list()
+    update_flag = None
     
     @property
     def remote_address(self):
@@ -582,8 +583,11 @@ class SunloginPlug(SunLoginDevice, ABC):
         return self._status.get(dp_id)
     
     def available(self, dp_id):
-        if dp_id == DP_REMOTE and self.status(dp_id) is not None:
-            return True
+        if dp_id == DP_REMOTE:
+            if self.status(dp_id) is not None and self._ip is not None and self.remote_address is not None:
+                return True
+            else: 
+                return False
         return self.update_manager.available
     
     def set_dp_remote(self, status):
@@ -614,6 +618,7 @@ class SunloginPlug(SunLoginDevice, ABC):
     
     def update_configuration(self):
         if len(self.new_data) > 0:
+            _LOGGER.debug('update_device_configuration')
             try:
                 update_device_configuration(self.hass, self.get_sn_by_configuration(), self.new_data)
                 self.new_data = dict()
@@ -740,6 +745,10 @@ class C1Pro(SunloginPlug):
         self.hass = hass
         self.config = config
         self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.api = PlugAPI(self.hass, self.default_address)
         self.update_manager = P2UpdateManager(self)
@@ -786,9 +795,9 @@ class C1Pro(SunloginPlug):
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except: pass
+        # try:
+        #     await coordinator.async_config_entry_first_refresh()
+        # except: pass
         await self.async_update()
         _LOGGER.debug("out device async_setup!!!!")
         return True
@@ -803,6 +812,10 @@ class P2(SunloginPlug):
         self.hass = hass
         self.config = config
         self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.api = PlugAPI(self.hass, self.default_address)
         self.update_manager = P2UpdateManager(self)
@@ -849,9 +862,9 @@ class P2(SunloginPlug):
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except: pass
+        # try:
+        #     await coordinator.async_config_entry_first_refresh()
+        # except: pass
         await self.async_update()
         _LOGGER.debug("out device async_setup!!!!")
         return True
@@ -868,6 +881,10 @@ class C2(SunloginPlug):
         self.hass = hass
         self.config = config
         self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.api = PlugAPI(self.hass, self.default_address)
         self.update_manager = P1UpdateManager(self)
@@ -926,9 +943,9 @@ class C2(SunloginPlug):
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except: pass
+        # try:
+        #     await coordinator.async_config_entry_first_refresh()
+        # except: pass
         await self.async_update()
         _LOGGER.debug("out device async_setup!!!!")
         return True
@@ -943,6 +960,10 @@ class P1Pro(SunloginPlug):
         self.hass = hass
         self.config = config
         self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.api = PlugAPI(self.hass, self.default_address)
         self.update_manager = P1UpdateManager(self)
@@ -1004,9 +1025,9 @@ class P1Pro(SunloginPlug):
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except: pass
+        # try:
+        #     await coordinator.async_config_entry_first_refresh()
+        # except: pass
 
         # self.update_manager = update_manager
         # self.hass.data[DOMAIN][SL_DEVICES][self.sn] = self
@@ -1037,6 +1058,10 @@ class P4(SunloginPlug):
         self.hass = hass
         self.config = config
         self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.api = PlugAPI(self.hass, self.default_address)
         self.update_manager = P1UpdateManager(self)
@@ -1098,9 +1123,9 @@ class P4(SunloginPlug):
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
-        try:
-            await coordinator.async_config_entry_first_refresh()
-        except: pass
+        # try:
+        #     await coordinator.async_config_entry_first_refresh()
+        # except: pass
 
         # self.update_manager = update_manager
         # self.hass.data[DOMAIN][SL_DEVICES][self.sn] = self
@@ -1137,13 +1162,14 @@ class SunloginUpdateManager(ABC):
     UPDATE_COUNT = 0
     TICK_N = 6
     UPDATE_INTERVAL = timedelta(seconds=60)
-    FIRST_UPDATE_INTERVAL = timedelta(seconds=15)
+    FIRST_UPDATE_INTERVAL = timedelta(seconds=10)
     CURRENT_UPDATE_INTERVAL = FIRST_UPDATE_INTERVAL
     
 
     def __init__(self, device):
         """Initialize the update manager."""
         self.device = device
+        self.device.api.timeout = (8,8)
         # self.SCAN_INTERVAL = timedelta(seconds=scan_interval)
         self.coordinator = DataUpdateCoordinator(
             device.hass,
@@ -1184,6 +1210,7 @@ class SunloginUpdateManager(ABC):
                 )
             #force update
             self.coordinator.async_update_listeners()
+            self.device.api.timeout = None
             raise UpdateFailed(err) from err
         
         if self.available is False:
@@ -1196,7 +1223,7 @@ class SunloginUpdateManager(ABC):
         self.available = True
         self.last_update = dt_util.utcnow()
         self.UPDATE_COUNT += 1
-        
+        self.device.api.timeout = None
         return data
 
     @abstractmethod
@@ -1229,14 +1256,12 @@ class P2UpdateManager(SunloginUpdateManager):
 
         try:
             resp = await api.async_get_status(sn)
-            _LOGGER.debug(resp.text)
+            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
             r_json = resp.json()
             status.update(plug_status_process(r_json))
         except: 
             self.error_flag += 1
         
-        # if self.UPDATE_COUNT % 2 == 1:
-        #     self.device.update_configuration()
         _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {self.device._status}")
 
         self.UPDATE_COUNT += 1
@@ -1272,7 +1297,7 @@ class P1UpdateManager(SunloginUpdateManager):
         #     status.update(value)
         try:
             resp = await api.async_get_electric(sn)
-            _LOGGER.debug(resp.text)
+            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
             r_json = resp.json()
             status.update(plug_electric_process(r_json))
         except: 
@@ -1280,7 +1305,7 @@ class P1UpdateManager(SunloginUpdateManager):
 
         try:
             resp = await api.async_get_status(sn)
-            _LOGGER.debug(resp.text)
+            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
             r_json = resp.json()
             status.update(plug_status_process(r_json))
         except: 
@@ -1297,8 +1322,6 @@ class P1UpdateManager(SunloginUpdateManager):
             except: 
                 self.error_flag += 1
         
-        # if self.UPDATE_COUNT % 2 == 1:
-        #     self.device.update_configuration()
         _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {self.device._status}")
 
         self.UPDATE_COUNT += 1
@@ -1307,26 +1330,25 @@ class P1UpdateManager(SunloginUpdateManager):
             raise requests.exceptions.ConnectionError
         return status
 
-class PlugConfigUpdateManager(SunloginUpdateManager):
+class PlugConfigUpdateManager():
 
     TICK_N = 2
-    UPDATE_INTERVAL = timedelta(hours=1)
-    FIRST_UPDATE_INTERVAL = timedelta(minutes=10)
-    devices = list()
+    UPDATE_INTERVAL = timedelta(hours=2)
+    FIRST_UPDATE_INTERVAL = timedelta(minutes=2)
+    CURRENT_UPDATE_INTERVAL = FIRST_UPDATE_INTERVAL
 
     def __init__(self, hass):
         """Initialize the update manager."""
         self.hass = hass
+        self.devices = list()
         self.coordinator = DataUpdateCoordinator(
             hass,
             _LOGGER,
             name=f"Config Update (Plug at 0x0001)",
             update_method=self.async_update,
-            update_interval=self.UPDATE_INTERVAL,
+            update_interval=self.CURRENT_UPDATE_INTERVAL,
         )
-        self.available = None
-        self.last_update = None
-
+        self.last_update = dt_util.utcnow()
         self.coordinator.async_add_listener(self.nop)
 
     # def add_listener(self):
@@ -1335,21 +1357,37 @@ class PlugConfigUpdateManager(SunloginUpdateManager):
     def nop(self):
         ''''''
 
-    async def async_fetch_data(self):
-        """Fetch data from the device."""
-        for device in self.devices:
-            device.update_configuration()
-            _LOGGER.debug(f"{device.name} ({device.sn})")
+    def change_update_interval(self):
+        if self.coordinator.update_interval == self.FIRST_UPDATE_INTERVAL:
+            self.CURRENT_UPDATE_INTERVAL = self.UPDATE_INTERVAL
+            self.coordinator.update_interval = self.UPDATE_INTERVAL
+            self.coordinator.async_set_updated_data(data=self.device._status)
+            _LOGGER.debug(f"PlugConfigUpdateManager change update interval")
+
+    async def async_update(self):
+        """Fetch data from the device and update availability."""
+        try:
+            for device in self.devices:
+                device.update_configuration()
+                _LOGGER.debug(f"{device.name} ({device.sn})")
+            self.change_update_interval()
+        except: 
+            self.change_update_interval()
+            return False
+            
+        self.last_update = dt_util.utcnow()
+        return True
+        
 
 class DNSUpdateManger():
 
     refresh_ttl = timedelta(hours=12)
     server = 'ip33'
-    devices = None
 
     def __init__(self, hass):
         self.hass = hass
         self.dns = DNS(hass, self.server)
+        self.devices = list()
         self.coordinator = DataUpdateCoordinator(
             self.hass,
             _LOGGER,

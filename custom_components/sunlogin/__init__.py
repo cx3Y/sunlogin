@@ -79,7 +79,7 @@ async def async_setup(hass: HomeAssistant, config: dict):
     async def _handle_set_dp(event):
         scan_interval = event.data[CONF_SCAN_INTERVAL]
         _LOGGER.debug("scan_interval: ", scan_interval)
-        
+
     return True
 
 
@@ -115,6 +115,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     token.setup(entry.data.get(CONF_ACCESS_TOKEN), entry.data.get(CONF_REFRESH_TOKEN), entry.data.get(CONF_REFRESH_EXPIRE, time.time()))
     dns_update.dns.set_domain(PLUG_DOMAIN)
     dns_update.devices = config[SL_DEVICES]
+    config_update.devices = config[SL_DEVICES]
 
     async def setup_entities(device_ids):
         for dev_id in device_ids:
@@ -148,6 +149,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN]['random'] = 'ootd'
     return True
 
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload an esphome config entry."""
+    _LOGGER.debug("async_unload_entry")
+    pass
 
 # class SunloginQRView(HomeAssistantView):
 #     """Display the sunlogin code at a protected url."""
