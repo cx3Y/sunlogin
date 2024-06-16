@@ -24,6 +24,174 @@
             },
             "electricity_lastmonth":{
                 "name":"Electricity(last month)"
+            },
+            "sub_power0":{
+                "name":"Power(slot0)"
+            },
+            "sub_power1":{
+                "name":"Power(slot1)"
+            },
+            "sub_power2":{
+                "name":"Power(slot2)"
+            },
+            "sub_power3":{
+                "name":"Power(slot3)"
+            },
+            "sub_power4":{
+                "name":"Power(slot4)"
+            },
+            "sub_power5":{
+                "name":"Power(slot5)"
+            },
+            "sub_power6":{
+                "name":"Power(slot6)"
+            },
+            "sub_power7":{
+                "name":"Power(slot7)"
+            },
+            "sub_current0":{
+                "name":"Current(slot0)"
+            },
+            "sub_current1":{
+                "name":"Current(slot1)"
+            },
+            "sub_current2":{
+                "name":"Current(slot2)"
+            },
+            "sub_current3":{
+                "name":"Current(slot3)"
+            },
+            "sub_current4":{
+                "name":"Current(slot4)"
+            },
+            "sub_current5":{
+                "name":"Current(slot5)"
+            },
+            "sub_current6":{
+                "name":"Current(slot6)"
+            },
+            "sub_current7":{
+                "name":"Current(slot7)"
+            },
+            "sub_electricity_hour0":{
+                "name":"Slot0 Electricity(hour)"
+            },
+            "sub_electricity_hour1":{
+                "name":"Slot1 Electricity(hour)"
+            },
+            "sub_electricity_hour2":{
+                "name":"Slot2 Electricity(hour)"
+            },
+            "sub_electricity_hour3":{
+                "name":"Slot3 Electricity(hour)"
+            },
+            "sub_electricity_hour4":{
+                "name":"Slot4 Electricity(hour)"
+            },
+            "sub_electricity_hour5":{
+                "name":"Slot5 Electricity(hour)"
+            },
+            "sub_electricity_hour6":{
+                "name":"Slot6 Electricity(hour)"
+            },
+            "sub_electricity_hour7":{
+                "name":"Slot7 Electricity(hour)"
+            },
+            "sub_electricity_day0":{
+                "name":"Slot0 Electricity(day)"
+            },
+            "sub_electricity_day1":{
+                "name":"Slot1 Electricity(day)"
+            },
+            "sub_electricity_day2":{
+                "name":"Slot2 Electricity(day)"
+            },
+            "sub_electricity_day3":{
+                "name":"Slot3 Electricity(day)"
+            },
+            "sub_electricity_day4":{
+                "name":"Slot4 Electricity(day)"
+            },
+            "sub_electricity_day5":{
+                "name":"Slot5 Electricity(day)"
+            },
+            "sub_electricity_day6":{
+                "name":"Slot6 Electricity(day)"
+            },
+            "sub_electricity_day7":{
+                "name":"Slot7 Electricity(day)"
+            },
+            "sub_electricity_week0":{
+                "name":"Slot0 Electricity(week)"
+            },
+            "sub_electricity_week1":{
+                "name":"Slot1 Electricity(week)"
+            },
+            "sub_electricity_week2":{
+                "name":"Slot2 Electricity(week)"
+            },
+            "sub_electricity_week3":{
+                "name":"Slot3 Electricity(week)"
+            },
+            "sub_electricity_week4":{
+                "name":"Slot4 Electricity(week)"
+            },
+            "sub_electricity_week5":{
+                "name":"Slot5 Electricity(week)"
+            },
+            "sub_electricity_week6":{
+                "name":"Slot6 Electricity(week)"
+            },
+            "sub_electricity_week7":{
+                "name":"Slot7 Electricity(week)"
+            },
+            "sub_electricity_month0":{
+                "name":"Slot0 Electricity(mounth)"
+            },
+            "sub_electricity_month1":{
+                "name":"Slot1 Electricity(mounth)"
+            },
+            "sub_electricity_month2":{
+                "name":"Slot2 Electricity(mounth)"
+            },
+            "sub_electricity_month3":{
+                "name":"Slot3 Electricity(mounth)"
+            },
+            "sub_electricity_month4":{
+                "name":"Slot4 Electricity(mounth)"
+            },
+            "sub_electricity_month5":{
+                "name":"Slot5 Electricity(mounth)"
+            },
+            "sub_electricity_month6":{
+                "name":"Slot6 Electricity(mounth)"
+            },
+            "sub_electricity_month7":{
+                "name":"Slot7 Electricity(mounth)"
+            },
+            "sub_electricity_lastmonth0":{
+                "name":"Slot0 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth1":{
+                "name":"Slot1 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth2":{
+                "name":"Slot2 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth3":{
+                "name":"Slot3 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth4":{
+                "name":"Slot4 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth5":{
+                "name":"Slot5 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth6":{
+                "name":"Slot6 Electricity(last month)"
+            },
+            "sub_electricity_lastmonth7":{
+                "name":"Slot7 Electricity(last month)"
             }
         },
         "switch": {

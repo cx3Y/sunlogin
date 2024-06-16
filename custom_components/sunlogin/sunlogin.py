@@ -11,6 +11,7 @@ import requests
 import async_timeout
 import aiohttp
 from .sunlogin_api import CloudAPI, CloudAPI_V2, PlugAPI_V1, PlugAPI_V2
+# from .fake_data import GET_PLUG_ELECTRIC_FAKE_DATA_P8, GET_PLUG_STATUS_FAKE_DATA_P8
 from .dns_api import DNS
 # from .sunlogin_api import PlugAPI_V2 as PlugAPI
 from datetime import timedelta, datetime, timezone
@@ -65,7 +66,7 @@ UPDATE_FLAG_SN = 'update_flag_sn'
 UPDATE_FLAG_IP = 'update_flag_ip'
 UPDATE_FLAG_VERSION = 'update_flag_version'
 
-ELECTRIC_MODEL = ["C1-2", "C2", "C2_BLE", "C2-BLE", "P1", "P1Pro", "P4"]   #, "SunLogin generic"
+ELECTRIC_MODEL = ["C1-2", "C2", "C2_BLE", "C2-BLE", "P1", "P1Pro", "P4", "P8", "P8Pro"]   #, "SunLogin generic"
 NO_ELECTRIC_MODEL = ["C1", "C1Pro", "C1Pro_BLE", "C1Pro-BLE", "P2"]
 DP_RELAY_0 = "relay0"
 DP_RELAY_1 = "relay1"
@@ -88,6 +89,62 @@ DP_ELECTRICITY_DAY = "electricity_day"
 DP_ELECTRICITY_WEEK = "electricity_week"
 DP_ELECTRICITY_MONTH = "electricity_month"
 DP_ELECTRICITY_LASTMONTH = "electricity_lastmonth"
+DP_SUB_POWER_0 = "sub_power0"
+DP_SUB_POWER_1 = "sub_power1"
+DP_SUB_POWER_2 = "sub_power2"
+DP_SUB_POWER_3 = "sub_power3"
+DP_SUB_POWER_4 = "sub_power4"
+DP_SUB_POWER_5 = "sub_power5"
+DP_SUB_POWER_6 = "sub_power6"
+DP_SUB_POWER_7 = "sub_power7"
+DP_SUB_CURRENT_0 = "sub_current0"
+DP_SUB_CURRENT_1 = "sub_current1"
+DP_SUB_CURRENT_2 = "sub_current2"
+DP_SUB_CURRENT_3 = "sub_current3"
+DP_SUB_CURRENT_4 = "sub_current4"
+DP_SUB_CURRENT_5 = "sub_current5"
+DP_SUB_CURRENT_6 = "sub_current6"
+DP_SUB_CURRENT_7 = "sub_current7"
+DP_SUB_ELECTRICITY_HOUR_0 = "sub_electricity_hour0"
+DP_SUB_ELECTRICITY_HOUR_1 = "sub_electricity_hour1"
+DP_SUB_ELECTRICITY_HOUR_2 = "sub_electricity_hour2"
+DP_SUB_ELECTRICITY_HOUR_3 = "sub_electricity_hour3"
+DP_SUB_ELECTRICITY_HOUR_4 = "sub_electricity_hour4"
+DP_SUB_ELECTRICITY_HOUR_5 = "sub_electricity_hour5"
+DP_SUB_ELECTRICITY_HOUR_6 = "sub_electricity_hour6"
+DP_SUB_ELECTRICITY_HOUR_7 = "sub_electricity_hour7"
+DP_SUB_ELECTRICITY_DAY_0 = "sub_electricity_day0"
+DP_SUB_ELECTRICITY_DAY_1 = "sub_electricity_day1"
+DP_SUB_ELECTRICITY_DAY_2 = "sub_electricity_day2"
+DP_SUB_ELECTRICITY_DAY_3 = "sub_electricity_day3"
+DP_SUB_ELECTRICITY_DAY_4 = "sub_electricity_day4"
+DP_SUB_ELECTRICITY_DAY_5 = "sub_electricity_day5"
+DP_SUB_ELECTRICITY_DAY_6 = "sub_electricity_day6"
+DP_SUB_ELECTRICITY_DAY_7 = "sub_electricity_day7"
+DP_SUB_ELECTRICITY_WEEK_0 = "sub_electricity_week0"
+DP_SUB_ELECTRICITY_WEEK_1 = "sub_electricity_week1"
+DP_SUB_ELECTRICITY_WEEK_2 = "sub_electricity_week2"
+DP_SUB_ELECTRICITY_WEEK_3 = "sub_electricity_week3"
+DP_SUB_ELECTRICITY_WEEK_4 = "sub_electricity_week4"
+DP_SUB_ELECTRICITY_WEEK_5 = "sub_electricity_week5"
+DP_SUB_ELECTRICITY_WEEK_6 = "sub_electricity_week6"
+DP_SUB_ELECTRICITY_WEEK_7 = "sub_electricity_week7"
+DP_SUB_ELECTRICITY_MONTH_0 = "sub_electricity_month0"
+DP_SUB_ELECTRICITY_MONTH_1 = "sub_electricity_month1"
+DP_SUB_ELECTRICITY_MONTH_2 = "sub_electricity_month2"
+DP_SUB_ELECTRICITY_MONTH_3 = "sub_electricity_month3"
+DP_SUB_ELECTRICITY_MONTH_4 = "sub_electricity_month4"
+DP_SUB_ELECTRICITY_MONTH_5 = "sub_electricity_month5"
+DP_SUB_ELECTRICITY_MONTH_6 = "sub_electricity_month6"
+DP_SUB_ELECTRICITY_MONTH_7 = "sub_electricity_month7"
+DP_SUB_ELECTRICITY_LASTMONTH_0 = "sub_electricity_lastmonth0"
+DP_SUB_ELECTRICITY_LASTMONTH_1 = "sub_electricity_lastmonth1"
+DP_SUB_ELECTRICITY_LASTMONTH_2 = "sub_electricity_lastmonth2"
+DP_SUB_ELECTRICITY_LASTMONTH_3 = "sub_electricity_lastmonth3"
+DP_SUB_ELECTRICITY_LASTMONTH_4 = "sub_electricity_lastmonth4"
+DP_SUB_ELECTRICITY_LASTMONTH_5 = "sub_electricity_lastmonth5"
+DP_SUB_ELECTRICITY_LASTMONTH_6 = "sub_electricity_lastmonth6"
+DP_SUB_ELECTRICITY_LASTMONTH_7 = "sub_electricity_lastmonth7"
 
 PLATFORM_OF_ENTITY = {
     DP_LED: "switch",
@@ -110,6 +167,62 @@ PLATFORM_OF_ENTITY = {
     DP_ELECTRICITY_WEEK: "sensor",
     DP_ELECTRICITY_MONTH: "sensor",
     DP_ELECTRICITY_LASTMONTH: "sensor",
+    DP_SUB_POWER_0: "sensor",
+    DP_SUB_POWER_1: "sensor",
+    DP_SUB_POWER_2: "sensor",
+    DP_SUB_POWER_3: "sensor",
+    DP_SUB_POWER_4: "sensor",
+    DP_SUB_POWER_5: "sensor",
+    DP_SUB_POWER_6: "sensor",
+    DP_SUB_POWER_7: "sensor",
+    DP_SUB_CURRENT_0: "sensor",
+    DP_SUB_CURRENT_1: "sensor",
+    DP_SUB_CURRENT_2: "sensor",
+    DP_SUB_CURRENT_3: "sensor",
+    DP_SUB_CURRENT_4: "sensor",
+    DP_SUB_CURRENT_5: "sensor",
+    DP_SUB_CURRENT_6: "sensor",
+    DP_SUB_CURRENT_7: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_0: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_1: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_2: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_3: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_4: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_5: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_6: "sensor",
+    DP_SUB_ELECTRICITY_HOUR_7: "sensor",
+    DP_SUB_ELECTRICITY_DAY_0: "sensor",
+    DP_SUB_ELECTRICITY_DAY_1: "sensor",
+    DP_SUB_ELECTRICITY_DAY_2: "sensor",
+    DP_SUB_ELECTRICITY_DAY_3: "sensor",
+    DP_SUB_ELECTRICITY_DAY_4: "sensor",
+    DP_SUB_ELECTRICITY_DAY_5: "sensor",
+    DP_SUB_ELECTRICITY_DAY_6: "sensor",
+    DP_SUB_ELECTRICITY_DAY_7: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_0: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_1: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_2: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_3: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_4: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_5: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_6: "sensor",
+    DP_SUB_ELECTRICITY_WEEK_7: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_0: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_1: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_2: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_3: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_4: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_5: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_6: "sensor",
+    DP_SUB_ELECTRICITY_MONTH_7: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_0: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_1: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_2: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_3: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_4: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_5: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_6: "sensor",
+    DP_SUB_ELECTRICITY_LASTMONTH_7: "sensor",
 }
 SLOT_1_WITH_ELECTRIC = {
     DP_LED: 0,
@@ -160,6 +273,64 @@ SLOT_4_WITHOUT_ELECTRIC = {
     DP_RELAY_2: 0,
     DP_RELAY_3: 0,
 }
+EXTRA_ENTITY_P8 = [
+    DP_SUB_POWER_0,
+    DP_SUB_POWER_1,
+    DP_SUB_POWER_2,
+    DP_SUB_POWER_3,
+    DP_SUB_POWER_4,
+    DP_SUB_POWER_5,
+    DP_SUB_POWER_6,
+    DP_SUB_POWER_7,
+    DP_SUB_CURRENT_0,
+    DP_SUB_CURRENT_1,
+    DP_SUB_CURRENT_2,
+    DP_SUB_CURRENT_3,
+    DP_SUB_CURRENT_4,
+    DP_SUB_CURRENT_5,
+    DP_SUB_CURRENT_6,
+    DP_SUB_CURRENT_7,
+    DP_SUB_ELECTRICITY_HOUR_0,
+    DP_SUB_ELECTRICITY_HOUR_1,
+    DP_SUB_ELECTRICITY_HOUR_2,
+    DP_SUB_ELECTRICITY_HOUR_3,
+    DP_SUB_ELECTRICITY_HOUR_4,
+    DP_SUB_ELECTRICITY_HOUR_5,
+    DP_SUB_ELECTRICITY_HOUR_6,
+    DP_SUB_ELECTRICITY_HOUR_7,
+    DP_SUB_ELECTRICITY_DAY_0,
+    DP_SUB_ELECTRICITY_DAY_1,
+    DP_SUB_ELECTRICITY_DAY_2,
+    DP_SUB_ELECTRICITY_DAY_3,
+    DP_SUB_ELECTRICITY_DAY_4,
+    DP_SUB_ELECTRICITY_DAY_5,
+    DP_SUB_ELECTRICITY_DAY_6,
+    DP_SUB_ELECTRICITY_DAY_7,
+    DP_SUB_ELECTRICITY_WEEK_0,
+    DP_SUB_ELECTRICITY_WEEK_1,
+    DP_SUB_ELECTRICITY_WEEK_2,
+    DP_SUB_ELECTRICITY_WEEK_3,
+    DP_SUB_ELECTRICITY_WEEK_4,
+    DP_SUB_ELECTRICITY_WEEK_5,
+    DP_SUB_ELECTRICITY_WEEK_6,
+    DP_SUB_ELECTRICITY_WEEK_7,
+    DP_SUB_ELECTRICITY_MONTH_0,
+    DP_SUB_ELECTRICITY_MONTH_1,
+    DP_SUB_ELECTRICITY_MONTH_2,
+    DP_SUB_ELECTRICITY_MONTH_3,
+    DP_SUB_ELECTRICITY_MONTH_4,
+    DP_SUB_ELECTRICITY_MONTH_5,
+    DP_SUB_ELECTRICITY_MONTH_6,
+    DP_SUB_ELECTRICITY_MONTH_7,
+    DP_SUB_ELECTRICITY_LASTMONTH_0,
+    DP_SUB_ELECTRICITY_LASTMONTH_1,
+    DP_SUB_ELECTRICITY_LASTMONTH_2,
+    DP_SUB_ELECTRICITY_LASTMONTH_3,
+    DP_SUB_ELECTRICITY_LASTMONTH_4,
+    DP_SUB_ELECTRICITY_LASTMONTH_5,
+    DP_SUB_ELECTRICITY_LASTMONTH_6,
+    DP_SUB_ELECTRICITY_LASTMONTH_7,
+]
 ELECTRIC_ENTITY = [DP_ELECTRICITY_HOUR, DP_ELECTRICITY_DAY, DP_ELECTRICITY_WEEK, DP_ELECTRICITY_MONTH, DP_ELECTRICITY_LASTMONTH, DP_POWER, DP_CURRENT, DP_VOLTAGE]
 SLOT_X_WITHOUT_ELECTRIC = [DP_LED, DP_DEFAULT, DP_RELAY_0, DP_RELAY_1, DP_RELAY_2, DP_RELAY_3, DP_RELAY_4, DP_RELAY_5, DP_RELAY_6, DP_RELAY_7]
 SLOT_X_WITH_ELECTRIC = ELECTRIC_ENTITY + SLOT_X_WITHOUT_ELECTRIC
@@ -275,12 +446,21 @@ def get_plug_entries(config):
 
 def get_plug_memos(config):
     memos = dict()
+    model = config.get(CONF_DEVICE_MODEL)
 
     for item in config.get(CONF_DEVICE_MEMOS, []):
         index = item.get('number', 0)
         name = item.get('name')
         if name is not None:
             memos.update({f'relay{index}': name})
+            if 'P8' in model:
+                memos.update({f'sub_power{index}': name})
+                memos.update({f'sub_current{index}': name})
+                memos.update({f'sub_electricity_hour{index}': name})
+                memos.update({f'sub_electricity_day{index}': name})
+                memos.update({f'sub_electricity_week{index}': name})
+                memos.update({f'sub_electricity_month{index}': name})
+                memos.update({f'sub_electricity_lastmonth{index}': name})
 
     return memos
     
@@ -313,11 +493,25 @@ def plug_electric_process(data):
     if (power := data.get('power')) is not None:
         power = power / 1000
         status[DP_POWER] = power
+    
+    if (sub_electric := data.get('sub')) is not None:
+        for index, electric in enumerate(sub_electric):
+            sub_current = electric['cur']
+            sub_current = sub_current // 1000
+            sub_power = electric['pwr']
+            sub_power = sub_power / 1000
+            status[f"sub_current{index}"] = sub_current
+            status[f"sub_power{index}"] = sub_power
 
     return status
 
-def plug_power_consumes_process(data):
+def plug_power_consumes_process(data, index=0):
     status = dict()
+    dp_electricity_hour = [DP_ELECTRICITY_HOUR,DP_SUB_ELECTRICITY_HOUR_0,DP_SUB_ELECTRICITY_HOUR_1,DP_SUB_ELECTRICITY_HOUR_2,DP_SUB_ELECTRICITY_HOUR_3,DP_SUB_ELECTRICITY_HOUR_4,DP_SUB_ELECTRICITY_HOUR_5,DP_SUB_ELECTRICITY_HOUR_6,DP_SUB_ELECTRICITY_HOUR_7][index]
+    dp_electricity_day = [DP_ELECTRICITY_DAY,DP_SUB_ELECTRICITY_DAY_0,DP_SUB_ELECTRICITY_DAY_1,DP_SUB_ELECTRICITY_DAY_2,DP_SUB_ELECTRICITY_DAY_3,DP_SUB_ELECTRICITY_DAY_4,DP_SUB_ELECTRICITY_DAY_5,DP_SUB_ELECTRICITY_DAY_6,DP_SUB_ELECTRICITY_DAY_7][index]
+    dp_electricity_week = [DP_ELECTRICITY_WEEK,DP_SUB_ELECTRICITY_WEEK_0,DP_SUB_ELECTRICITY_WEEK_1,DP_SUB_ELECTRICITY_WEEK_2,DP_SUB_ELECTRICITY_WEEK_3,DP_SUB_ELECTRICITY_WEEK_4,DP_SUB_ELECTRICITY_WEEK_5,DP_SUB_ELECTRICITY_WEEK_6,DP_SUB_ELECTRICITY_WEEK_7][index]
+    dp_electricity_month = [DP_ELECTRICITY_MONTH,DP_SUB_ELECTRICITY_MONTH_0,DP_SUB_ELECTRICITY_MONTH_1,DP_SUB_ELECTRICITY_MONTH_2,DP_SUB_ELECTRICITY_MONTH_3,DP_SUB_ELECTRICITY_MONTH_4,DP_SUB_ELECTRICITY_MONTH_5,DP_SUB_ELECTRICITY_MONTH_6,DP_SUB_ELECTRICITY_MONTH_7][index]
+    dp_electricity_lastmonth = [DP_ELECTRICITY_LASTMONTH,DP_SUB_ELECTRICITY_LASTMONTH_0,DP_SUB_ELECTRICITY_LASTMONTH_1,DP_SUB_ELECTRICITY_LASTMONTH_2,DP_SUB_ELECTRICITY_LASTMONTH_3,DP_SUB_ELECTRICITY_LASTMONTH_4,DP_SUB_ELECTRICITY_LASTMONTH_5,DP_SUB_ELECTRICITY_LASTMONTH_6,DP_SUB_ELECTRICITY_LASTMONTH_7][index]
     if len(data) > 0:
         # self.req_time = max(r_json[0].get('endtime', 0), self.req_time)
         # func = lambda itme: itme.get('starttime', 0)
@@ -360,15 +554,15 @@ def plug_power_consumes_process(data):
             else: break
         
         if Hour > 0:
-            status[DP_ELECTRICITY_HOUR] = Hour
+            status[dp_electricity_hour] = Hour
         if Day > 0:
-            status[DP_ELECTRICITY_DAY] = Day
+            status[dp_electricity_day] = Day
         if Week > 0:
-            status[DP_ELECTRICITY_WEEK] = Week
+            status[dp_electricity_week] = Week
         if Month > 0:
-            status[DP_ELECTRICITY_MONTH] = Month
+            status[dp_electricity_month] = Month
         if LastMonth - Month > 0:
-            status[DP_ELECTRICITY_LASTMONTH] = LastMonth - Month
+            status[dp_electricity_lastmonth] = LastMonth - Month
 
     return status
 
@@ -612,6 +806,9 @@ class SunloginPlug(SunLoginDevice, ABC):
         # entity = self.get_entity(f"sunlogin_{self.sn}_{DP_REMOTE}")
         # _LOGGER.debug(entity)
         # entity.async_write_ha_state()
+
+    def get_sersor_remark(self, dp_id):
+        return None
 
     def get_entity(self, unique_id):
         for entity in self._entities:
@@ -920,7 +1117,7 @@ class C2(SunloginPlug):
         for dp_id in ELECTRIC_ENTITY[:-3]:
             entity = self.get_entity(f"sunlogin_{self.sn}_{dp_id}")
             last_state = await entity.async_get_last_state()
-            if last_state is not None:
+            if last_state is not None and isinstance(last_state.state, (int, float)):
                 self._status.update({dp_id: last_state.state})
                     
         _LOGGER.debug("out async_restore_electricity")
@@ -999,7 +1196,7 @@ class P1Pro(SunloginPlug):
         for dp_id in ELECTRIC_ENTITY[:-3]:
             entity = self.get_entity(f"sunlogin_{self.sn}_{dp_id}")
             last_state = await entity.async_get_last_state()
-            if last_state is not None:
+            if last_state is not None and isinstance(last_state.state, (int, float)):
                 self._status.update({dp_id: last_state.state})
                     
         _LOGGER.debug("out async_restore_electricity")
@@ -1097,7 +1294,7 @@ class P4(SunloginPlug):
         for dp_id in ELECTRIC_ENTITY[:-3]:
             entity = self.get_entity(f"sunlogin_{self.sn}_{dp_id}")
             last_state = await entity.async_get_last_state()
-            if last_state is not None:
+            if last_state is not None and isinstance(last_state.state, (int, float)):
                 self._status.update({dp_id: last_state.state})
                     
         _LOGGER.debug("out async_restore_electricity")
@@ -1154,7 +1351,8 @@ class P8(SunloginPlug):
     
     @property
     def entities(self):
-        entities = SLOT_X_WITH_ELECTRIC.copy()
+        entities = SLOT_X_WITH_ELECTRIC.copy() + EXTRA_ENTITY_P8
+        # entities = entities + EXTRA_ENTITY_P8
         platform_entities = {}
         if self.remote_address is not None:
             entities.append(DP_REMOTE)
@@ -1174,10 +1372,10 @@ class P8(SunloginPlug):
     
     async def async_restore_electricity(self):
         _LOGGER.debug("in async_restore_electricity")
-        for dp_id in ELECTRIC_ENTITY[:-3]:
+        for dp_id in ELECTRIC_ENTITY[:-3] + EXTRA_ENTITY_P8[16:]:
             entity = self.get_entity(f"sunlogin_{self.sn}_{dp_id}")
             last_state = await entity.async_get_last_state()
-            if last_state is not None:
+            if last_state is not None and isinstance(last_state.state, (int, float)):
                 self._status.update({dp_id: last_state.state})
                     
         _LOGGER.debug("out async_restore_electricity")
@@ -1433,14 +1631,14 @@ class P8UpdateManager(SunloginUpdateManager):
 
         # if self.device.remote_address and dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
         if dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
-            try:
-                resp = await api.async_get_power_consumes(sn)
-                # _LOGGER.debug(resp.text)
-                r_json = resp.json()
-                status.update(plug_power_consumes_process(r_json))
-                self.last_power_consumes_update = dt_util.utcnow()
-            except: 
-                self.error_flag += 1
+            for index in range(8+1):
+                try:
+                    resp = await api.async_get_power_consumes(sn, index=index)
+                    r_json = resp.json()
+                    status.update(plug_power_consumes_process(r_json, index=index))
+                    self.last_power_consumes_update = dt_util.utcnow()
+                except: 
+                    self.error_flag += 1
         
         _LOGGER.debug(f"{self.device.name}: {self.device._status}")
 
@@ -1450,6 +1648,71 @@ class P8UpdateManager(SunloginUpdateManager):
             raise requests.exceptions.ConnectionError
         return status
 
+
+# class FakeP8UpdateManager(SunloginUpdateManager):
+#     "Fake"
+
+#     last_power_consumes_update = datetime.fromtimestamp(0, timezone.utc)
+#     error_flag = 0
+
+#     async def async_process_update_flag(self):
+#         if UPDATE_FLAG_SN in self.device.update_flag:
+#             await self.device.async_update_sn()
+
+#         if UPDATE_FLAG_IP in self.device.update_flag:
+#             await self.device.async_update_ip()
+
+#         if UPDATE_FLAG_VERSION in self.device.update_flag:
+#             await self.device.async_update_fw_version()
+
+#     async def async_fetch_data(self):
+#         """Fetch data from the device."""
+#         await self.async_process_update_flag()
+
+#         sn = self.device.sn
+#         api = self.device.api
+#         status = self.device._status
+#         # if value := self.coordinator.data is not None:
+#         #     status.update(value)
+#         try:
+#             resp = await api.async_get_electric(sn)
+#             _LOGGER.debug(f"{self.device.name} (GET_ELECTRIC): {resp.text}")
+#             r_json = GET_PLUG_ELECTRIC_FAKE_DATA_P8.copy()
+#             status.update(plug_electric_process(r_json))
+#         except: 
+#             self.error_flag += 1
+
+#         try:
+#             resp = await api.async_get_status(sn)
+#             _LOGGER.debug(f"{self.device.name} (GET_STATUS): {resp.text}")
+#             r_json = GET_PLUG_STATUS_FAKE_DATA_P8.copy()
+#             status.update(plug_status_process(r_json))
+#         except: 
+#             self.error_flag += 1
+
+#         # if self.device.remote_address and dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
+#         if dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
+#             _LOGGER.debug('in async_get_power_consumes')
+#             for index in range(8+1):
+#                 _LOGGER.debug(index)
+#                 try:
+#                     resp = await api.async_get_power_consumes('',index=index)
+#                     _LOGGER.debug(resp.ok)
+#                     _LOGGER.debug(resp.text)
+#                     r_json = resp.json()
+#                     status.update(plug_power_consumes_process(r_json, index=index))
+#                     _LOGGER.debug('out async_get_power_consumes')
+#                     self.last_power_consumes_update = dt_util.utcnow()
+#                 except: 
+#                     self.error_flag += 1
+        
+#         _LOGGER.debug(f"{self.device.name}: {self.device._status}")
+
+#         self.UPDATE_COUNT += 1
+#         if self.error_flag > 0:
+#             self.error_flag = 0
+#             raise requests.exceptions.ConnectionError
+#         return status
 
 
 class PlugConfigUpdateManager():
@@ -1700,6 +1963,6 @@ class PlugAPI():
     async def async_set_default(self, sn, status):
         return await self._api.async_set_default(sn, self.token.access_token, status)
 
-    async def async_get_power_consumes(self, sn):
-        return await self._api.async_get_power_consumes(sn)
+    async def async_get_power_consumes(self, sn, index=0):
+        return await self._api.async_get_power_consumes(sn, index=index)
     

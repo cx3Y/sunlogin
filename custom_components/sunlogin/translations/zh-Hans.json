@@ -24,6 +24,174 @@
             },
             "electricity_lastmonth":{
                 "name":"上月电量"
+            },
+            "sub_power0":{
+                "name":"当前功率(插孔1)"
+            },
+            "sub_power1":{
+                "name":"当前功率(插孔2)"
+            },
+            "sub_power2":{
+                "name":"当前功率(插孔3)"
+            },
+            "sub_power3":{
+                "name":"当前功率(插孔4)"
+            },
+            "sub_power4":{
+                "name":"当前功率(插孔5)"
+            },
+            "sub_power5":{
+                "name":"当前功率(插孔6)"
+            },
+            "sub_power6":{
+                "name":"当前功率(插孔7)"
+            },
+            "sub_power7":{
+                "name":"当前功率(插孔8)"
+            },
+            "sub_current0":{
+                "name":"当前电流(插孔1)"
+            },
+            "sub_current1":{
+                "name":"当前电流(插孔2)"
+            },
+            "sub_current2":{
+                "name":"当前电流(插孔3)"
+            },
+            "sub_current3":{
+                "name":"当前电流(插孔4)"
+            },
+            "sub_current4":{
+                "name":"当前电流(插孔5)"
+            },
+            "sub_current5":{
+                "name":"当前电流(插孔6)"
+            },
+            "sub_current6":{
+                "name":"当前电流(插孔7)"
+            },
+            "sub_current7":{
+                "name":"当前电流(插孔8)"
+            },
+            "sub_electricity_hour0":{
+                "name":"插孔1 小时电量"
+            },
+            "sub_electricity_hour1":{
+                "name":"插孔2 小时电量"
+            },
+            "sub_electricity_hour2":{
+                "name":"插孔3 小时电量"
+            },
+            "sub_electricity_hour3":{
+                "name":"插孔4 小时电量"
+            },
+            "sub_electricity_hour4":{
+                "name":"插孔5 小时电量"
+            },
+            "sub_electricity_hour5":{
+                "name":"插孔6 小时电量"
+            },
+            "sub_electricity_hour6":{
+                "name":"插孔7 小时电量"
+            },
+            "sub_electricity_hour7":{
+                "name":"插孔8 小时电量"
+            },
+            "sub_electricity_day0":{
+                "name":"插孔1 今日电量"
+            },
+            "sub_electricity_day1":{
+                "name":"插孔2 今日电量"
+            },
+            "sub_electricity_day2":{
+                "name":"插孔3 今日电量"
+            },
+            "sub_electricity_day3":{
+                "name":"插孔4 今日电量"
+            },
+            "sub_electricity_day4":{
+                "name":"插孔5 今日电量"
+            },
+            "sub_electricity_day5":{
+                "name":"插孔6 今日电量"
+            },
+            "sub_electricity_day6":{
+                "name":"插孔7 今日电量"
+            },
+            "sub_electricity_day7":{
+                "name":"插孔8 今日电量"
+            },
+            "sub_electricity_week0":{
+                "name":"插孔1 本周电量"
+            },
+            "sub_electricity_week1":{
+                "name":"插孔2 本周电量"
+            },
+            "sub_electricity_week2":{
+                "name":"插孔3 本周电量"
+            },
+            "sub_electricity_week3":{
+                "name":"插孔4 本周电量"
+            },
+            "sub_electricity_week4":{
+                "name":"插孔5 本周电量"
+            },
+            "sub_electricity_week5":{
+                "name":"插孔6 本周电量"
+            },
+            "sub_electricity_week6":{
+                "name":"插孔7 本周电量"
+            },
+            "sub_electricity_week7":{
+                "name":"插孔8 本周电量"
+            },
+            "sub_electricity_month0":{
+                "name":"插孔1 本月电量"
+            },
+            "sub_electricity_month1":{
+                "name":"插孔2 本月电量"
+            },
+            "sub_electricity_month2":{
+                "name":"插孔3 本月电量"
+            },
+            "sub_electricity_month3":{
+                "name":"插孔4 本月电量"
+            },
+            "sub_electricity_month4":{
+                "name":"插孔5 本月电量"
+            },
+            "sub_electricity_month5":{
+                "name":"插孔6 本月电量"
+            },
+            "sub_electricity_month6":{
+                "name":"插孔7 本月电量"
+            },
+            "sub_electricity_month7":{
+                "name":"插孔8 本月电量"
+            },
+            "sub_electricity_lastmonth0":{
+                "name":"插孔1 上月电量"
+            },
+            "sub_electricity_lastmonth1":{
+                "name":"插孔2 上月电量"
+            },
+            "sub_electricity_lastmonth2":{
+                "name":"插孔3 上月电量"
+            },
+            "sub_electricity_lastmonth3":{
+                "name":"插孔4 上月电量"
+            },
+            "sub_electricity_lastmonth4":{
+                "name":"插孔5 上月电量"
+            },
+            "sub_electricity_lastmonth5":{
+                "name":"插孔6 上月电量"
+            },
+            "sub_electricity_lastmonth6":{
+                "name":"插孔7 上月电量"
+            },
+            "sub_electricity_lastmonth7":{
+                "name":"插孔8 上月电量"
             }
         },
         "switch": {

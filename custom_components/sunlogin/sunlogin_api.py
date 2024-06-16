@@ -373,8 +373,8 @@ class PlugAPI_V1(HTTPRequest):
         #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
         pass
 
-    async def async_get_power_consumes(self, sn):
-        url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}"
+    async def async_get_power_consumes(self, sn, index=0):
+        url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
         resp = await self.async_make_request_by_requests("GET", url)
         return resp
@@ -484,7 +484,7 @@ class PlugAPI_V2(HTTPRequest):
 
     async def async_get_power_consumes(self, sn, index=0):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
-
+        
         resp = await self.async_make_request_by_requests("GET", url)
         return resp
     
