@@ -121,6 +121,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         for dev_id in device_ids:
             device_config = entry.data[CONF_DEVICES][dev_id]
             device = get_sunlogin_device(hass, device_config)
+            if device is None: continue
             config[SL_DEVICES].append(device)
             # await device.async_setup()
 

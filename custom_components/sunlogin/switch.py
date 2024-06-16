@@ -185,7 +185,7 @@ class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
             },
             "name": self.device.name,
             "manufacturer": "SunLogin",
-            "model": f"{model} ({self.device.sn})",
+            "model": model,
             "sw_version": self.device.fw_version,
         }
 

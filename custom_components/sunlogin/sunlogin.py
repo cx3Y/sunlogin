@@ -197,6 +197,8 @@ def get_sunlogin_device(hass, config):
         return P2(hass, config)
     elif 'P4' in model:
         return P4(hass, config)
+    elif 'P8' in model:
+        return P8(hass, config)
     else:
         pass
 
@@ -225,6 +227,8 @@ async def guess_model(hass, ip):
             model = 'P4'
         elif check_slot == 4:
             model = 'P1Pro'
+        elif check_slot == 8:
+            model = 'P8Pro'
     else:
         if check_slot == 1:
             model = 'C1Pro'
@@ -286,6 +290,7 @@ def plug_status_process(data):
     for relay_status in data.get(DP_RELAY, ''):
         index = relay_status['index']
         value = relay_status['status']
+        power = relay_status.get('power') #P8 series only
         status[f"relay{index}"]= value
 
     if (led := data.get(DP_LED)) is not None:
@@ -1118,30 +1123,12 @@ class P4(SunloginPlug):
 
         self.update_flag.append(UPDATE_FLAG_VERSION)
 
-        # _LOGGER.debug("new_data %s",self.new_data)        
-        # _LOGGER.debug(self.local_address)
         # update_manager = P1UpdateManager(self)
         coordinator = self.update_manager.coordinator
         # self.hass.async_create_task(coordinator.async_config_entry_first_refresh())
         # try:
         #     await coordinator.async_config_entry_first_refresh()
         # except: pass
-
-        # self.update_manager = update_manager
-        # self.hass.data[DOMAIN][SL_DEVICES][self.sn] = self
-        # self.reset_jobs.append(config.add_update_listener(self.async_update))
-        # Forward entry setup to related domains.
-        
-        # entities = get_device_entries(self.config)
-        # await asyncio.gather(
-        #     *[
-        #         self.hass.config_entries.async_forward_entry_setup(entities, platform)
-        #         for platform in ['switch','sensor']
-        #     ]
-        # )
-        # await self.hass.config_entries.async_forward_entry_setups(
-        #     entities, [SWITCH_DOMAIN]
-        # )
         
         _LOGGER.debug("out device async_setup!!!!")
         return True
@@ -1150,6 +1137,78 @@ class P4(SunloginPlug):
         """Send a request to the device."""
         
 
+class P8(SunloginPlug):
+    """Device for P4"""
+
+    def __init__(self, hass, config):
+        self.hass = hass
+        self.config = config
+        self.sn = config.get(CONF_DEVICE_SN)
+        self._entities = list()
+        self._status = dict()
+        self.new_data = dict()
+        self.update_flag = list()
+        # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
+        self.api = PlugAPI(self.hass, self.default_address)
+        self.update_manager = P8UpdateManager(self)
+    
+    @property
+    def entities(self):
+        entities = SLOT_X_WITH_ELECTRIC.copy()
+        platform_entities = {}
+        if self.remote_address is not None:
+            entities.append(DP_REMOTE)
+        
+        for dp_id in entities:
+            platform = PLATFORM_OF_ENTITY[dp_id]
+            if platform_entities.get(platform) is None:
+                platform_entities[platform] = [dp_id]
+            else:
+                platform_entities[platform].append(dp_id)
+            
+        return platform_entities
+
+    @property
+    def memos(self):
+        return get_plug_memos(self.config)
+    
+    async def async_restore_electricity(self):
+        _LOGGER.debug("in async_restore_electricity")
+        for dp_id in ELECTRIC_ENTITY[:-3]:
+            entity = self.get_entity(f"sunlogin_{self.sn}_{dp_id}")
+            last_state = await entity.async_get_last_state()
+            if last_state is not None:
+                self._status.update({dp_id: last_state.state})
+                    
+        _LOGGER.debug("out async_restore_electricity")
+
+    async def async_setup(self) -> bool:
+        """Set up the device and related entities."""
+        # config = self.config
+        _LOGGER.debug("in device async_setup")
+        # address = self.remote_address if self.remote_address else self.local_address
+        # api = PlugAPI(self.hass, address)
+        # api.timeout = config.data[CONF_TIMEOUT]
+        # self.api = api
+        self.api.inject_dns = True
+
+        await self.async_restore_electricity()
+        
+        if self.sn == BLANK_SN:
+            self.update_flag.append(UPDATE_FLAG_SN)
+        
+        if self.remote_address:
+            self.update_flag.append(UPDATE_FLAG_IP)
+            await self.async_restore_dp_remote()
+
+        self.update_flag.append(UPDATE_FLAG_VERSION)
+        
+        _LOGGER.debug("out device async_setup!!!!")
+        return True
+    
+    async def async_request(self, *args, **kwargs):
+        """Send a request to the device."""
+        
 
 
 
@@ -1256,13 +1315,13 @@ class P2UpdateManager(SunloginUpdateManager):
 
         try:
             resp = await api.async_get_status(sn)
-            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
+            _LOGGER.debug(f"{self.device.name} (GET_STATUS): {resp.text}")
             r_json = resp.json()
             status.update(plug_status_process(r_json))
         except: 
             self.error_flag += 1
         
-        _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {self.device._status}")
+        _LOGGER.debug(f"{self.device.name}: {self.device._status}")
 
         self.UPDATE_COUNT += 1
         if self.error_flag > 0:
@@ -1297,7 +1356,7 @@ class P1UpdateManager(SunloginUpdateManager):
         #     status.update(value)
         try:
             resp = await api.async_get_electric(sn)
-            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
+            _LOGGER.debug(f"{self.device.name} (GET_ELECTRIC): {resp.text}")
             r_json = resp.json()
             status.update(plug_electric_process(r_json))
         except: 
@@ -1305,7 +1364,7 @@ class P1UpdateManager(SunloginUpdateManager):
 
         try:
             resp = await api.async_get_status(sn)
-            _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {resp.text}")
+            _LOGGER.debug(f"{self.device.name} (GET_STATUS): {resp.text}")
             r_json = resp.json()
             status.update(plug_status_process(r_json))
         except: 
@@ -1322,13 +1381,76 @@ class P1UpdateManager(SunloginUpdateManager):
             except: 
                 self.error_flag += 1
         
-        _LOGGER.debug(f"{self.device.name} ({self.device.sn}): {self.device._status}")
+        _LOGGER.debug(f"{self.device.name}: {self.device._status}")
 
         self.UPDATE_COUNT += 1
         if self.error_flag > 0:
             self.error_flag = 0
             raise requests.exceptions.ConnectionError
         return status
+
+
+class P8UpdateManager(SunloginUpdateManager):
+    "For P8 series"
+
+    last_power_consumes_update = datetime.fromtimestamp(0, timezone.utc)
+    error_flag = 0
+
+    async def async_process_update_flag(self):
+        if UPDATE_FLAG_SN in self.device.update_flag:
+            await self.device.async_update_sn()
+
+        if UPDATE_FLAG_IP in self.device.update_flag:
+            await self.device.async_update_ip()
+
+        if UPDATE_FLAG_VERSION in self.device.update_flag:
+            await self.device.async_update_fw_version()
+
+    async def async_fetch_data(self):
+        """Fetch data from the device."""
+        await self.async_process_update_flag()
+
+        sn = self.device.sn
+        api = self.device.api
+        status = self.device._status
+        # if value := self.coordinator.data is not None:
+        #     status.update(value)
+        try:
+            resp = await api.async_get_electric(sn)
+            _LOGGER.debug(f"{self.device.name} (GET_ELECTRIC): {resp.text}")
+            r_json = resp.json()
+            status.update(plug_electric_process(r_json))
+        except: 
+            self.error_flag += 1
+
+        try:
+            resp = await api.async_get_status(sn)
+            _LOGGER.debug(f"{self.device.name} (GET_STATUS): {resp.text}")
+            r_json = resp.json()
+            status.update(plug_status_process(r_json))
+        except: 
+            self.error_flag += 1
+
+        # if self.device.remote_address and dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
+        if dt_util.utcnow() - self.last_power_consumes_update > timedelta(minutes=15):
+            try:
+                resp = await api.async_get_power_consumes(sn)
+                # _LOGGER.debug(resp.text)
+                r_json = resp.json()
+                status.update(plug_power_consumes_process(r_json))
+                self.last_power_consumes_update = dt_util.utcnow()
+            except: 
+                self.error_flag += 1
+        
+        _LOGGER.debug(f"{self.device.name}: {self.device._status}")
+
+        self.UPDATE_COUNT += 1
+        if self.error_flag > 0:
+            self.error_flag = 0
+            raise requests.exceptions.ConnectionError
+        return status
+
+
 
 class PlugConfigUpdateManager():
 

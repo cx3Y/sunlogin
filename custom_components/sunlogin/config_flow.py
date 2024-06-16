@@ -45,6 +45,7 @@ from .const import (
     CONF_DEVICE_IP_ADDRESS,
     CONF_DEVICE_SN,
     CONF_DEVICE_MODEL,
+    CONF_DEVICE_NAME,
     SL_COORDINATOR,
     SL_DEVICES,
     DOMAIN,
@@ -390,10 +391,13 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         await self.async_set_unique_id(user_input.get(CONF_IP_ADDRESS))
         sn, model = await guess_model(self.hass, user_input.get(CONF_IP_ADDRESS))
+        device_name = "{model}({sn})".format(model=model, sn=sn[:4])
+        device_conf = {CONF_DEVICE_IP_ADDRESS: user_input.get(CONF_IP_ADDRESS).strip(), CONF_DEVICE_MODEL: model, CONF_DEVICE_NAME: device_name}
         if sn is not None:
-            devices = {sn: {CONF_DEVICE_IP_ADDRESS: user_input.get(CONF_IP_ADDRESS).strip(), CONF_DEVICE_SN: sn, CONF_DEVICE_MODEL: model}}
+            device_conf.update({CONF_DEVICE_SN: sn})
+            devices = {sn: device_conf}
         else:
-            devices = {"__sn__": {CONF_DEVICE_IP_ADDRESS: user_input.get(CONF_IP_ADDRESS).strip(), CONF_DEVICE_MODEL: model}}
+            devices = {"__sn__": device_conf}
         
         user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
         entry = {CONF_USER_INPUT: user_input, CONF_DEVICES: devices}
