@@ -7,6 +7,7 @@ import hashlib
 import uuid
 import time
 import logging
+import textwrap
 from abc import ABC
 
 from homeassistant import config_entries
@@ -32,22 +33,26 @@ HTTP_SUFFIX = 'http://'
 BASE_URL = HTTPS_SUFFIX + 'api-std.sunlogin.oray.com'
 BASE_URL_V2 = HTTPS_SUFFIX + 'user-api-v2.oray.com'
 PLUG_URL = HTTPS_SUFFIX + 'slapi.oray.net'
-AUTH_LOGIN = '/authorize/code'
+AUTH_CODE = '/authorize/code'
 AUTH_REFRESH = '/authorize/refreshing'
 AUTH_SESSION = '/authorization/session-token'
 QRCODE_APPLY = '/qrcode/apply'
 QRCODE_STATUS = '/qrcode/status'
+LOGIN_TERMINALS = '/login-terminals'
 LOGIN_URL = BASE_URL + '/authorization'
 DEVICES_URL = BASE_URL + '/wakeup/devices'
 REFRESH_URL_V1 = BASE_URL + AUTH_REFRESH
 QRCODE_URL = BASE_URL_V2 + '/qrcode/authorization'
 QRCODE_APPLY_URL = BASE_URL_V2 + QRCODE_APPLY
 QRCODE_STATUS_URL = BASE_URL_V2 + QRCODE_STATUS
+AUTH_CODE_URL = BASE_URL + AUTH_CODE
+LOGIN_TERMINALS_URL = BASE_URL + LOGIN_TERMINALS
 REFRESH_URL_V2 = BASE_URL_V2 + AUTH_SESSION
 HEAD_AUTH = 'Authorization'
 AUTH_SUFFIX = 'Bearer'
 CLIENT_SALT = '==SunLogin@2023=='
 LANGUAGE = 'zh-Hans_US'
+REAL_DEVICE_MAC = ':'.join(textwrap.wrap("{:012X}".format(uuid.getnode()), 2))
 FAKE_HOST = '.'.join([str(uuid.getnode()), CLIENT_SALT, 'xyz'])
 FAKE_CLIENT_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, FAKE_HOST))
 HEADERS = {
@@ -247,6 +252,28 @@ class CloudAPI(HTTPRequest):
         data = {"refresh_token": refresh_token}
         
         resp = await self.async_make_request_by_requests("POST", REFRESH_URL_V1, data=data, headers=headers)
+        return resp
+
+    async def async_get_auth_code(self):
+        resp = await self.async_make_request_by_requests("GET", AUTH_CODE_URL, headers=HEADERS)
+        return resp
+    
+    async def async_grant_auth_code(self, access_token, code):
+        headers = HEADERS.copy()
+        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
+        headers['Content-Type'] = "application/json"
+        data = {"action": "grant", "code": code}
+
+        resp = await self.async_make_request_by_requests("POST", AUTH_CODE_URL, data=data, headers=headers)
+        return resp
+    
+    async def async_login_terminals_by_code(self, access_token, code, mac="", code_origin='qrcode'):
+        headers = HEADERS.copy()
+        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
+        headers['Content-Type'] = "application/json"
+        data = {"code": code, "mac": mac, "terminal_name": TERMINAL_NAME, "type": code_origin}
+
+        resp = await self.async_make_request_by_requests("POST", LOGIN_TERMINALS_URL, data=data, headers=headers)
         return resp
 
     async def async_get_devices_list(self, access_token):
@@ -484,7 +511,7 @@ class PlugAPI_V2(HTTPRequest):
 
     async def async_get_power_consumes(self, sn, index=0):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
-        
+
         resp = await self.async_make_request_by_requests("GET", url)
         return resp
     

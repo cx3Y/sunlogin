@@ -1796,11 +1796,13 @@ class Token():
     _api_v1 = None
     _api_v2 = None
     interval = 600
+    is_new_client = False
     
     def __init__(self, hass):
         self.hass = hass
         self.refresh_expire = 0
-        self.refresh_ttl = timedelta(seconds=200)
+        self.refresh_ttl = timedelta(seconds=150)
+        self.quick_refresh_ttl = timedelta(seconds=10)
 
     def setup(self, access_token, refresh_token, create_time):
         self.access_token = access_token
@@ -1854,12 +1856,47 @@ class Token():
         if time.time() >= exp:
             return True
         return False
+    
+    def change_update_interval(self, interval):
+        if self.coordinator.update_interval != interval:
+            self.coordinator.update_interval = interval
+            self.coordinator.async_set_updated_data(data=None)
+            _LOGGER.debug(f"TokenUpdateManager change update interval")
+
+    async def login_new_client(self):
+        error, resp = await async_request_error_process(self._api_v1.async_get_auth_code)
+        if error is not None:
+            _LOGGER.debug(error)
+            return
+        r_json = resp.json()
+        code = r_json.get('code')
+
+        error, resp = await async_request_error_process(self._api_v1.async_grant_auth_code, self.access_token, code)
+        if error is not None:
+            _LOGGER.debug(error)
+            return
+        
+        error, resp = await async_request_error_process(self._api_v1.async_login_terminals_by_code, self.access_token, code)
+        if error is not None:
+            _LOGGER.debug(error)
+            return
+        
+        self.is_new_client = False
+        _LOGGER.debug('login_new_client success!')
+        return True
 
     async def async_update(self):
         if not self.check():
             return
         
-        if not self.need_update() and time.time() - self.create_time < self.interval:
+        if self.is_new_client:
+            if self.need_update():
+                _LOGGER.debug('need reauth')
+                return
+            result = await self.login_new_client()
+            if not result: return
+
+        if not self.need_update() and time.time() - self.create_time < self.interval - 10:
             return False
         
         new_token = await self.async_update_by_refresh_token()
@@ -1885,8 +1922,12 @@ class Token():
 
         if error is not None:
             _LOGGER.debug(error)
+            if error == 'lt/new_device_alert':
+                self.is_new_client = True
+            self.change_update_interval(self.quick_refresh_ttl)
             return None
         
+        self.change_update_interval(self.refresh_ttl)
         r_json = resp.json()
         return r_json
 

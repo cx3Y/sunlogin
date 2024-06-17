@@ -29,7 +29,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from .sunlogin import SunLogin, guess_model
-from .sunlogin_api import CloudAPI, CloudAPI_V2
+from .sunlogin_api import CloudAPI, CloudAPI_V2, change_cliend_id_by_seed
 from .const import (
     CONF_SMARTPLUG,
     CONF_USER_INPUT,
