@@ -140,14 +140,16 @@ def calc_key_with_str(sn):
 
 def get_session(hass):
     entry_id = None
+    session = requests.Session()
     try:
         entry_id = config_entries.current_entry.get().entry_id
-    except:
-        pass
-    if entry_id is not None and hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION] is not None:
-        session = hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION]
-    else:
-        session = requests.Session()
+    except: pass
+
+    try:
+        if entry_id is not None and hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION] is not None:
+            session = hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION]
+    except: pass
+        
     return session
 
 class HTTPRequest(ABC):

@@ -28,7 +28,7 @@ from homeassistant.const import (
     CONF_CODE,
 )
 from homeassistant.core import callback
-from .sunlogin import SunLogin, guess_model
+from .sunlogin import SunLogin, guess_model, make_qrcode_base64_v2, device_filter
 from .sunlogin_api import CloudAPI, CloudAPI_V2, change_cliend_id_by_seed
 from .const import (
     CONF_SMARTPLUG,
@@ -340,18 +340,20 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # raise error
             pass
         r_json = resp.json()
-        qrdata = r_json.get('qrdata')
-        key = r_json.get('key')
+        qrdata = make_qrcode_base64_v2(r_json)
+        # qrdata = r_json.get('qrdata')
+        # key = r_json.get('key')
         if qrdata is not None:
-            buffer = io.BytesIO()
-            url = pyqrcode.create(qrdata)
-            # url.png(buffer, scale=5, module_color="#EEE", background="#FFF")
-            url.png(buffer, scale=5, module_color="#000", background="#FFF")
-            image_base64 = str(base64.b64encode(buffer.getvalue()), encoding='utf-8')
-            image = f'![image](data:image/png;base64,{image_base64})'
-            self.qrstep = 2
-            self.qrdata = {"image": image, "time": time.time(), "key": key}
-            _LOGGER.debug("make_qrcode_img: %s", self.qrdata)
+            # buffer = io.BytesIO()
+            # url = pyqrcode.create(qrdata)
+            # # url.png(buffer, scale=5, module_color="#EEE", background="#FFF")
+            # url.png(buffer, scale=5, module_color="#000", background="#FFF")
+            # image_base64 = str(base64.b64encode(buffer.getvalue()), encoding='utf-8')
+            # image = f'![image](data:image/png;base64,{image_base64})'
+            # self.qrstep = 2
+            # self.qrdata = {"image": image, "time": time.time(), "key": key}
+            # _LOGGER.debug("make_qrcode_img: %s", self.qrdata)
+            self.qrdata = qrdata
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
@@ -364,12 +366,7 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         unique_id = self.sunlogin.userid if self.sunlogin.userid is not None else user_input.get(CONF_USERNAME)
         await self.async_set_unique_id(unique_id)
 
-        devices = {}
-        for sn, dev in self.sunlogin.device_list.items():
-            device_type = dev.get('device_type', 'unknow')
-            if device_type == CONF_SMARTPLUG and dev.get('isenable', True):
-                # SunLoginDevice(hass, dev, sn)
-                devices[sn] = dev
+        devices = device_filter(self.sunlogin.device_list)
         
         user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
         entry = {

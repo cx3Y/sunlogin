@@ -21,6 +21,7 @@ SL_DEVICES = "sunlogin_devices"
 SL_COORDINATOR = "sunlogin_coordinator"
 
 CONFIG = 'configuration'
+CONF_RELOAD_FLAG = "reload_flag"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_NO_CLOUD = "no_cloud"
 CONF_SMSCODE = "smscode"
