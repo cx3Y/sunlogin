@@ -366,7 +366,7 @@ async def async_force_get_access_token(hass):
             access_token = r_json.get(CONF_ACCESS_TOKEN, '')
             refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
             refresh_expire = r_json.get(CONF_REFRESH_EXPIRE, time.time()+30*24*3600)
-            token = [access_token, refresh_token, refresh_expire]
+            token = r_json.copy()
         except: 
             continue
         if token is not None:
@@ -615,10 +615,8 @@ class SunLogin:
     def __init__(self, hass):
         """Initialize the class."""
         self.hass = hass
-        self.access_token = ''
-        self.refresh_token = ''
-        self.refresh_expire = 0
         self.userid = None
+        self.token = Token()
         self._api_v1 = CloudAPI(hass)
         self._api_v2 = CloudAPI_V2(hass)
         self.device_list = dict()
@@ -630,10 +628,11 @@ class SunLogin:
             return error
         
         r_json = resp.json()
-        self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        self.refresh_expire = time.time()
-        self.userid = toekn_decode(self.access_token).get('uid')
+        self.token.set_token(r_json)
+        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
+        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
+        # self.refresh_expire = time.time()+30*24*3600
+        self.userid = toekn_decode(self.token.access_token).get('uid')
 
         return "ok"
 
@@ -645,10 +644,11 @@ class SunLogin:
             return error
         
         r_json = resp.json()
-        self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        self.refresh_expire = time.time()
-        self.userid = toekn_decode(self.access_token).get('uid')
+        self.token.set_token(r_json)
+        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
+        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
+        # self.refresh_expire = time.time()+30*24*3600
+        self.userid = toekn_decode(self.token.access_token).get('uid')
 
         return "ok"
     
@@ -659,15 +659,16 @@ class SunLogin:
             return error
         
         r_json = resp.json()
-        self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        self.refresh_expire = time.time()
+        self.token.set_token(r_json)
+        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
+        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
+        # self.refresh_expire = time.time()+30*24*3600
         self.userid = r_json.get('userid')
 
         return "ok"    
 
     async def async_get_devices_list(self):
-        error, resp = await async_request_error_process(self._api_v1.async_get_devices_list, self.access_token)
+        error, resp = await async_request_error_process(self._api_v1.async_get_devices_list, self.token.access_token)
 
         if error is not None:
             return error
@@ -681,31 +682,24 @@ class SunLogin:
         return "No device"
     
     async def check_and_refresh(self):
-        info = toekn_decode(self.access_token)
+        info = self.token.token_decode()
         exp = info.get('exp', 0)
         if exp == 0:
             token = await async_force_get_access_token(self.hass)
-            self.access_token = token[0]
-            self.refresh_token = token[1]
-            self.refresh_expire = token[2]
+            self.token.set_token(token)
             return True
         elif time.time() >= exp:
-            error, resp = await async_request_error_process(self._api_v1.async_refresh_token, self.access_token, self.refresh_token)
+            error, resp = await async_request_error_process(self._api_v1.async_refresh_token, self.token.access_token, self.token.refresh_token)
             # error = 'lt/new_device_alert'
             if error is not None:
-                _LOGGER.debug(error)
+                _LOGGER.warning(error)
                 if error == 'lt/new_device_alert':
                     token = await async_force_get_access_token(self.hass)
-                    self.access_token = token[0]
-                    self.refresh_token = token[1]
-                    self.refresh_expire = token[2]
-                    # _LOGGER.debug(token)
+                    self.token.set_token(token)
                     return True
                 return 
             r_json = resp.json()
-            self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-            self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-            self.refresh_expire = r_json.get(CONF_REFRESH_EXPIRE, time.time()+30*24*3600)
+            self.token.set_token(r_json)
             return True
         return False
                 

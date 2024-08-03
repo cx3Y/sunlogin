@@ -210,20 +210,17 @@ async def async_sunlogin_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
     new_data = {**entry.data}
     update_flag = False
 
-    _sunlogin = SunLogin(hass)
-    _sunlogin.access_token = entry.data.get(CONF_ACCESS_TOKEN)
-    _sunlogin.refresh_token = entry.data.get(CONF_REFRESH_TOKEN)
-    result = await _sunlogin.check_and_refresh()
+    sunlogin = SunLogin(hass)
+    sunlogin.token.set_token(entry.data)
+    result = await sunlogin.check_and_refresh()
     if result:
         update_flag = True
-        new_data[CONF_ACCESS_TOKEN] = _sunlogin.access_token
-        new_data[CONF_REFRESH_TOKEN] = _sunlogin.refresh_token
-        new_data[CONF_REFRESH_EXPIRE] = _sunlogin.refresh_expire
+        new_data.update(sunlogin.token.get_token())
     elif result is None:
         pass
     
-    await _sunlogin.async_get_devices_list()
-    devices = device_filter(_sunlogin.device_list)
+    await sunlogin.async_get_devices_list()
+    devices = device_filter(sunlogin.device_list)
     for sn, dev in devices.items():
         device = new_data[CONF_DEVICES].get(sn)
         if device is None:

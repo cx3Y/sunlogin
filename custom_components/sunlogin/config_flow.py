@@ -372,9 +372,7 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         entry = {
             CONF_USER_INPUT: user_input, 
             CONF_DEVICES: devices, 
-            CONF_ACCESS_TOKEN: self.sunlogin.access_token,
-            CONF_REFRESH_TOKEN: self.sunlogin.refresh_token,
-            CONF_REFRESH_EXPIRE: self.sunlogin.refresh_expire,
+            **self.sunlogin.token.get_token()
         }
         return self.async_create_entry(
             title=unique_id,
