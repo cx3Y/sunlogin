@@ -233,7 +233,8 @@
     "config": {
         "abort": {
             "already_configured": "设备已配置。",
-            "unsupported_device_type": "不支持的设备类型！"
+            "unsupported_device_type": "不支持的设备类型！",
+            "reauth_successful": "验证成功"
         },
         "error": {
             "authentication_failed": "身份验证失败。\n{msg}",
@@ -257,6 +258,15 @@
                     "password": "密码登录",
                     "sms": "短信验证码登录",
                     "qrcode": "扫码登录"
+                }
+            },
+            "reauth": {
+                "title": "身份验证过期",
+                "description": "请选择重新验证方式",
+                "menu_options": {
+                    "password": "密码验证",
+                    "sms": "短信验证码验证",
+                    "qrcode": "扫码验证"
                 }
             },
             "local": {
@@ -300,13 +310,25 @@
     "options": {
         "step": {
             "init": {
-                "title": "向日葵配置",
-                "description": "请选择所需的操作。",
+                "title": "向日葵设置",
+                "description": "修改向日葵设备更新间隔和设置",
                 "data": {
-                    "add_device": "Add a new device",
-                    "edit_device": "Edit a device",
-                    "delete_device": "Delete a device",
-                    "setup_cloud": "Reconfigure Cloud API account"
+                    "add_device": "添加设备",
+                    "edit_device": "编辑设备",
+                    "delete_device": "删除设备",
+                    "setup_cloud": "重新配置云服务账户",
+                    "remote_update_interval": "云服务更新间隔",
+                    "local_update_interval": "局域网更新间隔",
+                    "power_consumes_update_interval": "用电统计更新间隔",
+                    "config_update_interval": "配置存储间隔",
+                    "token_update_interval": "Token 刷新间隔",
+                    "enable_devices_update": "启用设备自动同步",
+                    "devices_update_interval": "设备同步间隔",
+                    "enable_dns_injector": "启用 DNS 注入",
+                    "dns_server": "DNS 服务器",
+                    "dns_update_interval": "DNS 更新间隔",
+                    "enable_proxy": "启用代理",
+                    "proxy_server": "代理服务器"
                 }
             },
             "yaml_import": {

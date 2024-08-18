@@ -233,7 +233,8 @@
     "config": {
         "abort": {
             "already_configured": "Device has already been configured.",
-            "unsupported_device_type": "Unsupported device type!"
+            "unsupported_device_type": "Unsupported device type!",
+            "reauth_successful": "Reauth successful"
         },
         "error": {
             "authentication_failed": "Failed to authenticate.\n{msg}",
@@ -257,6 +258,15 @@
                     "password": "Log in with your password",
                     "sms": "Log in with an SMS verification code",
                     "qrcode": "Scan the QR code to log in"
+                }
+            },
+            "reauth": {
+                "title": "Reauthentication",
+                "description": "Please select a reauth method",
+                "menu_options": {
+                    "password": "Reauthenticate with your password",
+                    "sms": "Reauthenticate with an SMS verification code",
+                    "qrcode": "Scan the QR code to Reauthenticate"
                 }
             },
             "local": {
@@ -301,12 +311,24 @@
         "step": {
             "init": {
                 "title": "SunLogin Configuration",
-                "description": "Please select the desired actionSSSS.",
+                "description": "modify the settings below",
                 "data": {
                     "add_device": "Add a new device",
                     "edit_device": "Edit a device",
                     "delete_device": "Delete a device",
-                    "setup_cloud": "Reconfigure Cloud API account"
+                    "setup_cloud": "Reconfigure Cloud API account",
+                    "remote_update_interval": "Set remote update interval",
+                    "local_update_interval": "Set local update interval",
+                    "power_consumes_update_interval": "Set power consumption update interval",
+                    "config_update_interval": "Set configuration update interval",
+                    "token_update_interval": "Set token update interval",
+                    "enable_devices_update": "Enable devices update",
+                    "devices_update_interval": "Set devices update interval",
+                    "enable_dns_injector": "Enable DNS injector",
+                    "dns_server": "Set DNS server",
+                    "dns_update_interval": "Set DNS update interval",
+                    "enable_proxy": "Enable proxy",
+                    "proxy_server": "Set proxy server"
                 }
             },
             "yaml_import": {

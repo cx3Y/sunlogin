@@ -4,6 +4,7 @@ import asyncio
 import logging
 import time
 import requests
+import functools
 from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
@@ -29,7 +30,24 @@ from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.event import async_track_time_interval
 
-from .sunlogin import SunLogin, Token, TokenUpdateManger, PlugConfigUpdateManager, DNSUpdateManger, get_sunlogin_device, device_filter, guess_model
+from .sunlogin import (
+    SunLogin, 
+    Token, 
+    get_sunlogin_device, 
+    device_filter, 
+    config_options,
+    async_guess_model,
+)
+from .updater import (
+    UpdateManager, 
+    StoreManager,
+    DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL,
+    DEFAULT_DNS_UPDATE_INTERVAL,
+    DEFAULT_TOKEN_UPDATE_INTERVAL,
+    DEFAULT_CONFIG_UPDATE_INTERVAL,
+    DEFAULT_DEVICES_UPDATE_INTERVAL,
+)
 # from .common import TuyaDevice, async_config_entry_by_device_id
 from .config_flow import ENTRIES_VERSION
 from .const import (
@@ -41,6 +59,25 @@ from .const import (
     CONF_REFRESH_EXPIRE,
     CONF_REQUESTS_SESSION,
     CONF_CONFIGURATION_UPDATE,
+    CONF_UPDATE_MANAGER,
+    CONF_STORE_MANAGER,
+    CONF_REMOTE_UPDATE_INTERVAL,
+    CONF_LOCAL_UPDATE_INTERVAL,
+    CONF_POWER_CONSUMES_UPDATE_INTERVAL,
+    CONF_CONFIG_UPDATE_INTERVAL,
+    CONF_TOKEN_UPDATE_INTERVAL,
+    CONF_DEVICES_UPDATE_INTERVAL,
+    CONF_ENABLE_DNS_INJECTOR,
+    CONF_DNS_SERVER,
+    CONF_DNS_UPDATE_INTERVAL,
+    CONF_ENABLE_PROXY,
+    CONF_PROXY_SERVER,
+    CONF_ENABLE_DEVICES_UPDATE,
+    DEFAULT_ENABLE_DEVICES_UPDATE,
+    DEFAULT_ENABLE_DNS_INJECTOR,
+    DEFAULT_DNS_SERVER,
+    DEFAULT_ENABLE_PROXY,
+    DEFAULT_PROXY_SERVER,
     CONF_DNS_UPDATE,
     CONF_RELOAD_FLAG,
     CONF_DEVICE_ADDRESS,
@@ -103,31 +140,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     #     )
     #     return
 
-    # user_input = entry.data['user_input']
-    _LOGGER.debug(entry.entry_id)
-    _LOGGER.debug(entry.data)
-    _LOGGER.debug(hass.data[DOMAIN][CONF_RELOAD_FLAG])
-    if entry.entry_id in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
-        await async_sunlogin_reload_entry(hass, entry)
+    _LOGGER.debug(entry.as_dict())
+    local = entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS) is not None
+    options = {
+        CONF_REMOTE_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.remote.seconds,
+        CONF_LOCAL_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.local.seconds,
+        CONF_POWER_CONSUMES_UPDATE_INTERVAL: DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL.interval.seconds,
+        CONF_CONFIG_UPDATE_INTERVAL: DEFAULT_CONFIG_UPDATE_INTERVAL.interval.seconds,
+        CONF_TOKEN_UPDATE_INTERVAL: DEFAULT_TOKEN_UPDATE_INTERVAL.interval.seconds,
+        CONF_ENABLE_DEVICES_UPDATE: DEFAULT_ENABLE_DEVICES_UPDATE,
+        CONF_DEVICES_UPDATE_INTERVAL: DEFAULT_DEVICES_UPDATE_INTERVAL.interval.seconds,
+        CONF_ENABLE_DNS_INJECTOR: DEFAULT_ENABLE_DNS_INJECTOR,
+        CONF_DNS_SERVER: DEFAULT_DNS_SERVER,
+        CONF_DNS_UPDATE_INTERVAL: DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds,
+        CONF_ENABLE_PROXY: DEFAULT_ENABLE_PROXY,
+        CONF_PROXY_SERVER: DEFAULT_PROXY_SERVER,
+    }
+    # if entry.entry_id in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
+    #     await async_sunlogin_reload_entry(hass, entry)
     await async_check_local_mode_entry(hass, entry)
 
-    token_update = TokenUpdateManger(hass)
-    config_update = PlugConfigUpdateManager(hass)
-    dns_update = DNSUpdateManger(hass)
+    token = Token(entry.data.copy())
+    update_manager = UpdateManager(hass, entry)
+    store_manager = StoreManager(hass, entry)
     config = {
         SL_DEVICES: list(),
-        CONF_TOKEN: token_update,
-        CONF_REQUESTS_SESSION: None,
-        CONF_CONFIGURATION_UPDATE: config_update,
+        CONF_TOKEN: token,
+        CONF_UPDATE_MANAGER: update_manager,
+        CONF_STORE_MANAGER: store_manager,
     }
     hass.data[DOMAIN][CONFIG][entry.entry_id] = config
-    hass.data[DOMAIN][CONF_SCAN_INTERVAL] = entry.data[CONF_USER_INPUT][CONF_SCAN_INTERVAL]
-    hass.data[DOMAIN][CONF_DNS_UPDATE] = dns_update
-    token = Token(entry.data.copy())
-    token_update.setup(token)
-    dns_update.dns.set_domain(PLUG_DOMAIN)
-    dns_update.devices = config[SL_DEVICES]
-    config_update.devices = config[SL_DEVICES]
+    # hass.data[DOMAIN][CONF_SCAN_INTERVAL] = entry.data[CONF_USER_INPUT][CONF_SCAN_INTERVAL]
 
     async def setup_entities(device_ids):
         for dev_id in device_ids:
@@ -135,8 +178,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             device = get_sunlogin_device(hass, device_config)
             if device is None: continue
             config[SL_DEVICES].append(device)
-            # await device.async_setup()
-
 
         await asyncio.gather(
             *[
@@ -145,12 +186,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
 
+        if local:
+            options[CONF_ENABLE_DEVICES_UPDATE] = False
+            options[CONF_ENABLE_DNS_INJECTOR] = False
+        options.update(entry.options)
+        config_options(hass, entry, options)
+        hass.config_entries.async_update_entry(entry, options=options)
+        if not local:
+            _async_refresh_token = functools.partial(token.async_refresh_token, hass)
+            update_manager.add_task('token_update', _async_refresh_token, DEFAULT_TOKEN_UPDATE_INTERVAL, 40)
+        update_manager.add_task('config_update', store_manager.async_store_entry, DEFAULT_CONFIG_UPDATE_INTERVAL, 60*2)
         
-        await token_update.coordinator.async_config_entry_first_refresh()
-        await dns_update.coordinator.async_config_entry_first_refresh()
         for device in config[SL_DEVICES]:
-            await device.async_setup()
-        # await config_update.coordinator.async_config_entry_first_refresh()
+            await device.async_setup(update_manager)
         #await hass.config_entries.async_reload(entry.entry_id)
 
     
@@ -159,19 +207,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # unsub_listener = entry.add_update_listener(update_listener)
     # hass.data[DOMAIN][entry.entry_id] = {UNSUB_LISTENER: unsub_listener}
-    hass.data[DOMAIN]['random'] = 'ootd'
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload an esphome config entry."""
-    _LOGGER.debug("async_unload_entry")
-    _LOGGER.debug(entry.entry_id)
-    _LOGGER.debug(entry.data)
+    _LOGGER.debug(f"async_unload_entry {entry.entry_id}")
+    # _LOGGER.debug(entry.data)
     config = hass.data[DOMAIN][CONFIG].pop(entry.entry_id)
-    for device in config[SL_DEVICES]:
-        await device.update_manager.coordinator.async_shutdown()
-    await config[CONF_TOKEN].coordinator.async_shutdown()
-    await config[CONF_CONFIGURATION_UPDATE].coordinator.async_shutdown()
+    config[CONF_UPDATE_MANAGER].remove_listener()
+    config[CONF_UPDATE_MANAGER].cancel()
+    await config[CONF_UPDATE_MANAGER].coordinator.async_shutdown()
+    config[CONF_STORE_MANAGER].cancel()
+
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -180,16 +227,21 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ]
         )
     )
-    if entry.entry_id not in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
-        hass.data[DOMAIN][CONF_RELOAD_FLAG].append(entry.entry_id)
+    # if entry.entry_id not in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
+    #     hass.data[DOMAIN][CONF_RELOAD_FLAG].append(entry.entry_id)
     return unload_ok
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle an options update."""
+    _LOGGER.error("async_reload_entry")
+    return True
 
 async def async_check_local_mode_entry(hass: HomeAssistant, entry: ConfigEntry):
     devices = entry.data[CONF_DEVICES].copy()
     sn, model = None, None
     for _, device_config in devices.items():
         if device_config.get(CONF_DEVICE_ADDRESS) is None and device_config.get(CONF_DEVICE_MODEL) is None:
-            sn, model = await guess_model(hass, entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS))
+            sn, model = await async_guess_model(hass, entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS))
             break
     if sn is not None and model is not None:
         device_name = "{model}({sn})".format(model=model, sn=sn[:4])
@@ -199,47 +251,6 @@ async def async_check_local_mode_entry(hass: HomeAssistant, entry: ConfigEntry):
         new_data = {**entry.data}
         new_data[CONF_DEVICES] = devices
         hass.config_entries.async_update_entry(entry, data=new_data)
-
-
-
-async def async_sunlogin_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    if entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS) is not None:
-        hass.data[DOMAIN][CONF_RELOAD_FLAG].remove(entry.entry_id)
-        return
-
-    new_data = {**entry.data}
-    update_flag = False
-
-    sunlogin = SunLogin(hass)
-    sunlogin.token.set_token(entry.data)
-    result = await sunlogin.check_and_refresh()
-    if result:
-        update_flag = True
-        new_data.update(sunlogin.token.get_token())
-    elif result is None:
-        pass
-    
-    await sunlogin.async_get_devices_list()
-    devices = device_filter(sunlogin.device_list)
-    for sn, dev in devices.items():
-        device = new_data[CONF_DEVICES].get(sn)
-        if device is None:
-            update_flag = True
-            new_data[CONF_DEVICES][sn] = dev
-        elif (
-            str(device.get(CONF_DEVICE_NAME)) != str(dev.get(CONF_DEVICE_NAME)) 
-            or str(device.get(CONF_DEVICE_MEMOS)) != str(dev.get(CONF_DEVICE_MEMOS))
-        ):
-            update_flag = True
-            new_data[CONF_DEVICES][sn].update(dev)
-    
-    if update_flag:
-        hass.config_entries.async_update_entry(entry, data=new_data)
-
-    hass.data[DOMAIN][CONF_RELOAD_FLAG].remove(entry.entry_id)
-    _LOGGER.debug(entry.data)
-    
-
 
 # class SunloginQRView(HomeAssistantView):
 #     """Display the sunlogin code at a protected url."""

@@ -3,6 +3,8 @@
 本插件可将贝锐向日葵的设备接入HomeAssistant，理论上支持所有插座。
 
 ## 已支持型号
+- C1
+- C1-2
 - C1Pro
 - C1Pro-BLE
 - C2

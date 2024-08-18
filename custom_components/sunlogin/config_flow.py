@@ -28,20 +28,40 @@ from homeassistant.const import (
     CONF_CODE,
 )
 from homeassistant.core import callback
-from .sunlogin import SunLogin, guess_model, make_qrcode_base64_v2, device_filter
-from .sunlogin_api import CloudAPI, CloudAPI_V2, change_cliend_id_by_seed
+from .sunlogin import SunLogin, async_guess_model, make_qrcode_base64_v2, device_filter, config_options
+from .sunlogin_api import CloudAPI, CloudAPI_V2, change_cliend_id_by_seed, PlugAPI_V2_FAST
+from .dns_api import change_dns_server
+from .updater import (
+    DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL,
+    DEFAULT_DNS_UPDATE_INTERVAL,
+    DEFAULT_CONFIG_UPDATE_INTERVAL,
+    DEFAULT_TOKEN_UPDATE_INTERVAL,
+    DEFAULT_DEVICES_UPDATE_INTERVAL,
+)
 from .const import (
     CONF_SMARTPLUG,
     CONF_USER_INPUT,
     CONF_SMSCODE,
     CONF_LOGIN_METHOD,
-    CONF_ADD_DEVICE,
-    CONF_EDIT_DEVICE,
-    CONF_SETUP_CLOUD,
-    CONF_ACTION,
-    CONF_ACCESS_TOKEN,
-    CONF_REFRESH_TOKEN,
-    CONF_REFRESH_EXPIRE,
+    CONF_REMOTE_UPDATE_INTERVAL,
+    CONF_LOCAL_UPDATE_INTERVAL,
+    CONF_POWER_CONSUMES_UPDATE_INTERVAL,
+    CONF_CONFIG_UPDATE_INTERVAL,
+    CONF_TOKEN_UPDATE_INTERVAL,
+    CONF_DEVICES_UPDATE_INTERVAL,
+    CONF_ENABLE_DNS_INJECTOR,
+    CONF_DNS_SERVER,
+    CONF_DNS_UPDATE_INTERVAL,
+    CONF_ENABLE_PROXY,
+    CONF_PROXY_SERVER,
+    CONF_ENABLE_DEVICES_UPDATE,
+    DEFAULT_ENABLE_DEVICES_UPDATE,
+    DEFAULT_ENABLE_DNS_INJECTOR,
+    DEFAULT_DNS_SERVER,
+    DEFAULT_ENABLE_PROXY,
+    DEFAULT_PROXY_SERVER,
+
     CONF_DEVICE_IP_ADDRESS,
     CONF_DEVICE_SN,
     CONF_DEVICE_MODEL,
@@ -49,9 +69,6 @@ from .const import (
     SL_COORDINATOR,
     SL_DEVICES,
     DOMAIN,
-    HTTP_SUFFIX,
-    LOCAL_PORT,
-    PLATFORMS,
 )
 #from .discovery import discover
 
@@ -59,11 +76,20 @@ _LOGGER = logging.getLogger(__name__)
 
 ENTRIES_VERSION = 1
 
-DEFAULT_SCAN_INTERVAL = 60
-
 CONFIGURE_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_SCAN_INTERVAL, default=60): int,
+        vol.Required(CONF_REMOTE_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL.remote.seconds): int,
+        vol.Required(CONF_LOCAL_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL.local.seconds): int,
+        vol.Required(CONF_POWER_CONSUMES_UPDATE_INTERVAL, default=DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL.interval.seconds): int,
+        vol.Required(CONF_CONFIG_UPDATE_INTERVAL, default=DEFAULT_CONFIG_UPDATE_INTERVAL.interval.seconds): int,
+        vol.Required(CONF_TOKEN_UPDATE_INTERVAL, default=DEFAULT_TOKEN_UPDATE_INTERVAL.interval.seconds): int,
+        vol.Required(CONF_ENABLE_DEVICES_UPDATE, default=DEFAULT_ENABLE_DEVICES_UPDATE): bool,
+        vol.Required(CONF_DEVICES_UPDATE_INTERVAL, default=DEFAULT_DEVICES_UPDATE_INTERVAL.interval.seconds): int,
+        vol.Required(CONF_ENABLE_DNS_INJECTOR, default=DEFAULT_ENABLE_DNS_INJECTOR): bool,
+        vol.Required(CONF_DNS_SERVER, default=DEFAULT_DNS_SERVER): cv.string,
+        vol.Required(CONF_DNS_UPDATE_INTERVAL, default=DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds): int,
+        vol.Required(CONF_ENABLE_PROXY, default=DEFAULT_ENABLE_PROXY): bool,
+        vol.Required(CONF_PROXY_SERVER, default=DEFAULT_PROXY_SERVER): cv.string,
     }
 )
 
@@ -166,6 +192,23 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.qrtask = None
         self.api_v2 = None
         self.sunlogin = None
+        self.reauth_entry_id = None
+
+    async def async_step_reauth(self, data):
+        """Handle configuration by re-auth."""
+
+        self.reauth_entry_id = self.context["entry_id"]
+        self.api_v2 = CloudAPI_V2(self.hass)
+        self.sunlogin = SunLogin(self.hass)
+
+        return self.async_show_menu(
+            step_id="reauth",
+            menu_options=[
+                "password",
+                "sms",
+                "qrcode"
+            ]
+        )
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
@@ -368,12 +411,22 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         devices = device_filter(self.sunlogin.device_list)
         
-        user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
         entry = {
             CONF_USER_INPUT: user_input, 
             CONF_DEVICES: devices, 
-            **self.sunlogin.token.get_token()
+            **self.sunlogin.token.config
         }
+
+        if self.reauth_entry_id is not None:
+            reauth_entry = self.hass.config_entries.async_get_entry(self.reauth_entry_id)
+            data = {**reauth_entry.data}
+            data.update(self.sunlogin.token.config)
+            self.hass.config_entries.async_update_entry(reauth_entry, data=data)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(self.reauth_entry_id)
+            )
+            return self.async_abort(reason="reauth_successful")
+        
         return self.async_create_entry(
             title=unique_id,
             data=entry,
@@ -385,7 +438,7 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         #     return self.async_abort(reason="already_configured")
 
         await self.async_set_unique_id(user_input.get(CONF_IP_ADDRESS))
-        sn, model = await guess_model(self.hass, user_input.get(CONF_IP_ADDRESS))
+        sn, model = await async_guess_model(self.hass, user_input.get(CONF_IP_ADDRESS))
         device_name = "{model}({sn})".format(model=model, sn=sn[:4])
         device_conf = {CONF_DEVICE_IP_ADDRESS: user_input.get(CONF_IP_ADDRESS).strip(), CONF_DEVICE_MODEL: model, CONF_DEVICE_NAME: device_name}
         if sn is not None:
@@ -394,7 +447,6 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         else:
             devices = {"__sn__": device_conf}
         
-        user_input[CONF_SCAN_INTERVAL] = DEFAULT_SCAN_INTERVAL
         entry = {CONF_USER_INPUT: user_input, CONF_DEVICES: devices}
         return self.async_create_entry(
             title=user_input.get(CONF_IP_ADDRESS),
@@ -426,17 +478,16 @@ class SunLoginOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Manage basic options."""
         # device_id = self.config_entry.data[CONF_DEVICE_ID]
-        old_scan_interval = self.hass.data[DOMAIN][CONF_SCAN_INTERVAL]
-        defaults = {CONF_SCAN_INTERVAL: old_scan_interval}
+        defaults = dict()
+        defaults.update(self.config_entry.options)
 
         if user_input is not None:
-            scan_interval = user_input.get(CONF_SCAN_INTERVAL, old_scan_interval)
-            self.hass.data[DOMAIN][CONF_SCAN_INTERVAL] = scan_interval
+            data = defaults.copy()
+            diff = dict(set(user_input.items()) - set(data.items()))
+            options = config_options(self.hass, self.config_entry, diff)
+            data.update(options)
             
-            for device in self.hass.data[DOMAIN][SL_DEVICES][self.config_entry.entry_id]:
-                await device.async_set_scan_interval(scan_interval)
-            
-            return self.async_create_entry(title="", data={})
+            return self.async_create_entry(title="", data=data)
 
         return self.async_show_form(
             step_id="init",

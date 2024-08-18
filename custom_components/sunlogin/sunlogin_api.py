@@ -9,14 +9,8 @@ import time
 import logging
 import textwrap
 from abc import ABC
-
-from homeassistant import config_entries
-from .const import (
-    DOMAIN,
-    SL_DEVICES,
-    CONFIG,
-    CONF_REQUESTS_SESSION,
-)
+from requests.auth import AuthBase
+from .const import PLUG_DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,7 +26,7 @@ HTTPS_SUFFIX = 'https://'
 HTTP_SUFFIX = 'http://'
 BASE_URL = HTTPS_SUFFIX + 'api-std.sunlogin.oray.com'
 BASE_URL_V2 = HTTPS_SUFFIX + 'user-api-v2.oray.com'
-PLUG_URL = HTTPS_SUFFIX + 'slapi.oray.net'
+PLUG_URL = HTTPS_SUFFIX + PLUG_DOMAIN
 AUTH_CODE = '/authorize/code'
 AUTH_REFRESH = '/authorize/refreshing'
 AUTH_SESSION = '/authorization/session-token'
@@ -91,27 +85,6 @@ API_SET_STATUS = "set_plug_status"
 API_SET_TIME = "plug_timer_add"
 API_UPGRADE = "plug_upgrade"
 API_UPGRADE_STATUS = "plug_upgrade_status"
-DP_RELAY_0 = "relay0"
-DP_RELAY_1 = "relay1"
-DP_RELAY_2 = "relay2"
-DP_RELAY_3 = "relay3"
-DP_RELAY_4 = "relay4"
-DP_RELAY_5 = "relay5"
-DP_RELAY_6 = "relay6"
-DP_RELAY_7 = "relay7"
-DP_LED = "led"
-DP_DEFAULT = "def_st"
-DP_REMOTE = "remote"
-DP_RELAY = "response"
-DP_ELECTRIC = "electric"
-DP_POWER = "power"
-DP_CURRENT = "current"
-DP_VOLTAGE = "voltage"
-DP_ELECTRICITY_HOUR = "electricity_hour"
-DP_ELECTRICITY_DAY = "electricity_day"
-DP_ELECTRICITY_WEEK = "electricity_week"
-DP_ELECTRICITY_MONTH = "electricity_month"
-DP_ELECTRICITY_LASTMONTH = "electricity_lastmonth"
 
 
 def change_cliend_id_by_seed(seed):
@@ -138,26 +111,57 @@ def calc_key_with_str(sn):
     
     return {TIME: seed, KEY: hashlib.md5(raw.encode()).hexdigest()}
 
-def get_session(hass):
-    entry_id = None
-    session = requests.Session()
-    try:
-        entry_id = config_entries.current_entry.get().entry_id
-    except: pass
+class SunloginAuth(AuthBase):
+    """Attaches HTTP Pizza Authentication to the given Request object."""
+    def __init__(self, password):
+        # setup any auth-related data here
+        self.password = password
 
-    try:
-        if entry_id is not None and hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION] is not None:
-            session = hass.data[DOMAIN][CONFIG][entry_id][CONF_REQUESTS_SESSION]
-    except: pass
-        
-    return session
+    def __call__(self, r):
+        # modify and return the request
+        r.headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {self.password}"
+        return r
+
 
 class HTTPRequest(ABC):
     hass = None
     session = None
     timeout = None
+    _verify = dict()
+    _proxies = dict()
 
-    async def async_make_request_by_requests(self, method, url, data=None, headers=None, verify=None):
+    @property
+    def proxies(self):
+        if (not self._proxies 
+            or self._proxies.get('http') is None 
+            or self._proxies.get('https') is None
+        ):
+            return None
+        return self._proxies
+
+    @proxies.setter
+    def proxies(self, proxy):
+        ssl_verify = False
+        if not proxy:
+            proxy = None
+            ssl_verify = None
+
+        self._proxies.update({'http': proxy, 'https': proxy})
+        self.verify = ssl_verify
+
+    @property
+    def verify(self):
+        return self._verify.get('verify')
+    
+    @verify.setter
+    def verify(self, verify):
+        if verify is None or verify:
+            verify = None
+        else:
+            verify = False
+        self._verify.update({'verify': verify})
+
+    async def async_make_request_by_requests(self, method, url, data=None, headers=None, **kwargs):
         # session = self.session
         if method == "GET":
             func = functools.partial(
@@ -165,26 +169,32 @@ class HTTPRequest(ABC):
                 url,
                 headers=headers, 
                 params=data,
-                verify=verify,
+                verify=self.verify,
                 timeout=self.timeout,
+                proxies=self.proxies,
+                **kwargs
             )
         elif method == "POST":
             func = functools.partial(
                 self.session.post,
                 url,
                 headers=headers,
-                data=json.dumps(data),
-                verify=verify,
+                json=data,
+                verify=self.verify,
                 timeout=self.timeout,
+                proxies=self.proxies,
+                **kwargs
             )
         elif method == "PUT":
             func = functools.partial(
                 self.session.put,
                 url,
                 headers=headers,
-                data=json.dumps(data),
-                verify=verify,
+                json=data,
+                verify=self.verify,
                 timeout=self.timeout,
+                proxies=self.proxies,
+                **kwargs
             )
 
         resp = await self.hass.async_add_executor_job(func)
@@ -218,8 +228,7 @@ class HTTPRequest(ABC):
 class CloudAPI(HTTPRequest):
     def __init__(self, hass):
         self.hass = hass
-        # self.session = requests.Session()
-        self.session = get_session(self.hass)
+        self.session = requests.Session()
 
     async def async_login_by_password(self, username, password):
         data = {
@@ -242,18 +251,14 @@ class CloudAPI(HTTPRequest):
             "medium" : "sms",
             "code" : smscode,
         }
-        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=HEADERS)
 
-        #error
+        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=HEADERS)
         return resp
     
     async def async_refresh_token(self, access_token, refresh_token):
-        headers = HEADERS.copy()
-        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
-        headers['Content-Type'] = "application/json"
         data = {"refresh_token": refresh_token}
-        
-        resp = await self.async_make_request_by_requests("POST", REFRESH_URL_V1, data=data, headers=headers)
+
+        resp = await self.async_make_request_by_requests("POST", REFRESH_URL_V1, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_auth_code(self):
@@ -261,37 +266,26 @@ class CloudAPI(HTTPRequest):
         return resp
     
     async def async_grant_auth_code(self, access_token, code):
-        headers = HEADERS.copy()
-        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
-        headers['Content-Type'] = "application/json"
         data = {"action": "grant", "code": code}
 
-        resp = await self.async_make_request_by_requests("POST", AUTH_CODE_URL, data=data, headers=headers)
+        resp = await self.async_make_request_by_requests("POST", AUTH_CODE_URL, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
         return resp
     
     async def async_login_terminals_by_code(self, access_token, code, mac="", code_origin='qrcode'):
-        headers = HEADERS.copy()
-        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
-        headers['Content-Type'] = "application/json"
         data = {"code": code, "mac": mac, "terminal_name": TERMINAL_NAME, "type": code_origin}
 
-        resp = await self.async_make_request_by_requests("POST", LOGIN_TERMINALS_URL, data=data, headers=headers)
+        resp = await self.async_make_request_by_requests("POST", LOGIN_TERMINALS_URL, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_devices_list(self, access_token):
-        headers = HEADERS.copy()
-        headers[HEAD_AUTH] = f"{AUTH_SUFFIX} {access_token}"
-        # _LOGGER.debug(headers)
-        resp = await self.async_make_request_by_requests("GET", DEVICES_URL, headers=headers)
-        # _LOGGER.debug(resp.headers)
+        resp = await self.async_make_request_by_requests("GET", DEVICES_URL, headers=HEADERS, auth=SunloginAuth(access_token))
         return resp
 
 
 class CloudAPI_V2(HTTPRequest):
     def __init__(self, hass):
         self.hass = hass
-        # self.session = requests.Session()
-        self.session = get_session(self.hass)
+        self.session = requests.Session()
 
     async def async_get_qrdata(self):
         #https://user-api-v2.oray.com/qrcode/apply?account=171********&_t=1614407645711
@@ -305,9 +299,8 @@ class CloudAPI_V2(HTTPRequest):
         return resp
 
     async def async_login_by_qrcode(self, secret):
-        headers={"Content-Type": "application/json"}
         data = {"key":secret, "issetcookie":True}
-        resp = await self.async_make_request_by_requests("POST", QRCODE_URL, data=data, headers=headers)
+        resp = await self.async_make_request_by_requests("POST", QRCODE_URL, data=data)
 
         return resp
     
@@ -319,21 +312,20 @@ class CloudAPI_V2(HTTPRequest):
 
 
 class PlugAPI_V1(HTTPRequest):
-
+    _address = None
     
     def __init__(self, hass, address):
         self.hass = hass
-        self._address = address + PLUG_PATH
-        # self.session = requests.Session()
-        self.session = get_session(self.hass)
+        self._address = address
+        self.session = requests.Session()
 
     @property
     def address(self):
-        return self._address
+        return self._address + PLUG_PATH
     
     @address.setter
     def address(self, address):
-        self._address = address + PLUG_PATH
+        self._address = address
     
     def calc_key(self, sn):
         # return calc_key_with_str(sn)
@@ -411,22 +403,21 @@ class PlugAPI_V1(HTTPRequest):
 
 
 class PlugAPI_V2(HTTPRequest):
-    VERIFY = None
+    _address = None
     
     def __init__(self, hass, address):
         self.hass = hass
-        self._address = address + PLUG_PATH
+        self.address = address
         # self._address = HTTPS_SUFFIX + '47.111.169.221' + PLUG_PATH
-        # self.session = requests.Session()
-        self.session = get_session(self.hass)
+        self.session = requests.Session()
 
     @property
     def address(self):
-        return self._address
+        return self._address + PLUG_PATH
     
     @address.setter
     def address(self, address):
-        self._address = address + PLUG_PATH
+        self._address = address
     
     def calc_key(self, sn):
         # return calc_key_with_str(sn)
@@ -436,9 +427,9 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_STATUS, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_electric(self, sn, access_token):
@@ -446,66 +437,66 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_PLUG_ELECTRIC, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_info(self, sn, access_token):
         data = {API: API_GET_PLUG_INFO, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_sn(self, sn='sunlogin', access_token='a'):
         data = {API: API_GET_SN, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_wifi_info(self, sn, access_token):
         data = {API: API_GET_WIFI_INFO, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
-    async def async_set_status(self, sn, access_token, index, status):
+    async def async_set_status(self, sn, index, status, access_token):
         data = {API: API_SET_STATUS, SN: sn, "index": index, "status": status}
         data.update(self.calc_key(sn))
         
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
-    async def async_set_led(self, sn, access_token, status):
+    async def async_set_led(self, sn, status, access_token):
         data = {API: API_SET_PLUG_LED, SN: sn, "enabled": status}
         data.update(self.calc_key(sn))
         
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
 
-    async def async_set_default(self, sn, access_token, status):
+    async def async_set_default(self, sn, status, access_token):
         data = {API: API_SET_PLUG_DFLTSTAT, SN: sn, "default": status*2}
         data.update(self.calc_key(sn))
         
-        headers = {HEAD_AUTH: f"{AUTH_SUFFIX} {access_token}", 'Host': 'slapi.oray.net'}
+        headers = {'Host': PLUG_DOMAIN}
 
-        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, verify=self.VERIFY)
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
     
-    async def async_add_timer(self, sn, access_token, timer):
+    async def async_add_timer(self, sn, timer, access_token):
         #{"time": 2023, "repeat": 0, "enable": 1, "action": 0}
         #%257B%2522time%2522%253A2023%252C%2522repeat%2522%253A0%252C%2522enable%2522%253A1%252C%2522action%2522%253A0%257D
         #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
@@ -514,6 +505,129 @@ class PlugAPI_V2(HTTPRequest):
     async def async_get_power_consumes(self, sn, index=0):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
+        resp = await self.async_make_request_by_requests("GET", url)
+        return resp
+    
+
+class PlugAPI_V2_FAST(HTTPRequest):
+    _address = None
+    _process_address = dict()
+    
+    def __init__(self, hass, address):
+        self.hass = hass
+        self.address = address
+        # self._address = HTTPS_SUFFIX + '47.111.169.221' + PLUG_PATH
+        self.session = requests.Session()
+
+    @property
+    def address(self):
+        address = self._process_address[self._address]
+        return address + PLUG_PATH
+    
+    @address.setter
+    def address(self, address):
+        self._address = address
+        self.process_address(address)
+    
+    def calc_key(self, sn):
+        # return calc_key_with_str(sn)
+        return calc_key_with_time(sn)
+    
+    def process_address(self, address):
+        if self._process_address.get(address) is None:
+            self._process_address[address] = address          
+
+    def process_cert(self, fn=''):
+        adapter = self.session.get_adapter('https://')
+        connection_pool_kwargs = adapter.poolmanager.connection_pool_kw
+        if fn == 'async_get_power_consumes':
+            connection_pool_kwargs['assert_hostname'] = None
+        else:
+            connection_pool_kwargs['assert_hostname'] = PLUG_DOMAIN
+            
+    async def async_get_status(self, sn, access_token):
+        data = {API: API_GET_STATUS, SN: sn}
+        data.update(self.calc_key(sn))
+
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_get_electric(self, sn, access_token):
+        #https://sl-api.oray.com/smartplugs/{sn}/electric-online
+        data = {API: API_GET_PLUG_ELECTRIC, SN: sn}
+        data.update(self.calc_key(sn))
+
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_get_info(self, sn, access_token):
+        data = {API: API_GET_PLUG_INFO, SN: sn}
+        data.update(self.calc_key(sn))
+
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_get_sn(self, sn='sunlogin', access_token='a'):
+        data = {API: API_GET_SN, SN: sn}
+        data.update(self.calc_key(sn))
+        
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_get_wifi_info(self, sn, access_token):
+        data = {API: API_GET_WIFI_INFO, SN: sn}
+        data.update(self.calc_key(sn))
+        
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_set_status(self, sn, index, status, access_token):
+        data = {API: API_SET_STATUS, SN: sn, "index": index, "status": status}
+        data.update(self.calc_key(sn))
+        
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_set_led(self, sn, status, access_token):
+        data = {API: API_SET_PLUG_LED, SN: sn, "enabled": status}
+        data.update(self.calc_key(sn))
+        
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_set_default(self, sn, status, access_token):
+        data = {API: API_SET_PLUG_DFLTSTAT, SN: sn, "default": status*2}
+        data.update(self.calc_key(sn))
+        
+        headers = {'Host': PLUG_DOMAIN}
+        self.process_cert()
+        resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
+        return resp
+    
+    async def async_add_timer(self, sn, timer, access_token):
+        #{"time": 2023, "repeat": 0, "enable": 1, "action": 0}
+        #%257B%2522time%2522%253A2023%252C%2522repeat%2522%253A0%252C%2522enable%2522%253A1%252C%2522action%2522%253A0%257D
+        #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
+        pass
+
+    async def async_get_power_consumes(self, sn, index=0):
+        url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
+        
+        self.process_cert("async_get_power_consumes")
         resp = await self.async_make_request_by_requests("GET", url)
         return resp
     

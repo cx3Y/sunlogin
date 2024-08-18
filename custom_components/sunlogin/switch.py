@@ -83,7 +83,7 @@ async def async_setup_entry(
 
     for device in hass.data[DOMAIN][CONFIG][config_entry.entry_id][SL_DEVICES]:
 
-        _LOGGER.debug(device.entities)
+        # _LOGGER.debug(device.entities)
 
         entities_to_setup = [
             entity
@@ -95,7 +95,7 @@ async def async_setup_entry(
             for entity in entities_to_setup:
                 #_LOGGER.debug("switch_types: %s", SWITCH_TYPES.get(entity))
                 entities.append(
-                    SunLoginHaSwitch(
+                    DeviceSwitch(
                         device,
                         entity,
                         SWITCH_TYPES.get(entity),
@@ -103,10 +103,10 @@ async def async_setup_entry(
                 )
     
     # async_add_entities(sensors, update_before_add=True)
-    _LOGGER.debug(entities)
+    # _LOGGER.debug(entities)
     async_add_entities(entities)
 
-class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
+class DeviceSwitch(SwitchEntity, RestoreEntity):
     """Tuya Switch Device."""
 
     # ToggleEntity
@@ -123,7 +123,6 @@ class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
         self.device = device
         self.dp_id = switchid
         self.entity_description = description
-        self._coordinator = device.update_manager.coordinator
         self.entity_id = f"{ENTITY_DOMAIN}.{self.device.model}_{self.device.sn}_{self.dp_id}"
 
         if (remark := device.memos.get(switchid)) is not None:
@@ -131,20 +130,15 @@ class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
 
         _LOGGER.debug("Initialized switch [%s]", self.entity_id)
 
-    @property
-    def is_on(self) -> bool:
-        """Return true if switch is on."""
-        return self.device.status(self.dp_id)
-
     async def async_turn_on(self, **kwargs) -> None:
         """Turn the switch on."""
         await self.device.async_set_dp(self.dp_id, 1)
-        self.async_write_ha_state()
+        self._recv_data()
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the device off."""
         await self.device.async_set_dp(self.dp_id, 0)
-        self.async_write_ha_state()
+        self._recv_data()
 
     def _recv_data(self):
         """Receive data from the update coordinator.
@@ -156,23 +150,24 @@ class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
         be overridden by child classes in order to update the state of the
         entities, when applicable.
         """
-        if self._coordinator.last_update_success:
-            self._update_state(self._coordinator.data)
+        self._update_state()
         self.async_write_ha_state()
 
-    def _update_state(self, data):
+    def _update_state(self):
         """Update the state of the entity.
 
         This method should be overridden by child classes in order to
         internalize state and attributes received from the coordinator.
         """
+        self._attr_is_on = bool(self.device.status(self.dp_id))
+
 
     async def async_added_to_hass(self):
         """Call when the entity is added to hass."""
         # state = await self.async_get_last_state()
         # _LOGGER.debug('last state %s %s', self.entity_id, state.state)
-        self.async_on_remove(self._coordinator.async_add_listener(self._recv_data))
-        self.device._entities.append(self)
+        # self.async_on_remove(self._coordinator.async_add_listener(self._recv_data))
+        self.device._entities[self.dp_id] = self
 
     @property
     def device_info(self):
@@ -198,6 +193,7 @@ class SunLoginHaSwitch(SwitchEntity, RestoreEntity):
     def unique_id(self):
         """Return unique device identifier."""
         return f"sunlogin_{self.device.sn}_{self.dp_id}"
+        # return f"{self.device.unique_id}_{self.dp_id}" #*************
 
     @property
     def available(self):

@@ -658,7 +658,7 @@ async def async_setup_entry(
             for entity in entities_to_setup:
                 #_LOGGER.debug("sensor_types:%s" ,SENSOR_TYPES.get(entity))
                 entities.append(
-                    SunLoginHaSensor(
+                    DeviceSensor(
                         device,
                         entity,
                         SENSOR_TYPES.get(entity),
@@ -666,11 +666,11 @@ async def async_setup_entry(
                 )
     
     # async_add_entities(sensors, update_before_add=True)
-    _LOGGER.debug(entities)
+    # _LOGGER.debug(entities)
     async_add_entities(entities)
 
 
-class SunLoginHaSensor(SensorEntity, RestoreEntity):
+class DeviceSensor(SensorEntity, RestoreEntity):
     """Representation of a Tuya sensor."""
 
     _attr_has_entity_name = True
@@ -688,7 +688,6 @@ class SunLoginHaSensor(SensorEntity, RestoreEntity):
         self.device = device
         self.dp_id = sensorid
         self.entity_description = description
-        self._coordinator = device.update_manager.coordinator
         self.entity_id = f"{ENTITY_DOMAIN}.{self.device.model}_{self.device.sn}_{self.dp_id}"
 
         _LOGGER.debug("Initialized sensor [%s]", self.entity_id)
@@ -714,8 +713,8 @@ class SunLoginHaSensor(SensorEntity, RestoreEntity):
         be overridden by child classes in order to update the state of the
         entities, when applicable.
         """
-        if self._coordinator.last_update_success:
-            self._update_state(self.device)
+
+        # self._update_state(self.device)
         self.async_write_ha_state()
 
     def _update_state(self, data):
@@ -727,8 +726,8 @@ class SunLoginHaSensor(SensorEntity, RestoreEntity):
 
     async def async_added_to_hass(self):
         """Call when the entity is added to hass."""
-        self.async_on_remove(self._coordinator.async_add_listener(self._recv_data))
-        self.device._entities.append(self)
+        # self.async_on_remove(self._coordinator.async_add_listener(self._recv_data))
+        self.device._entities[self.dp_id] = self
 
     @property
     def device_info(self):
