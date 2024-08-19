@@ -33,7 +33,7 @@ def change_dns_server(dns_server, api_server='ip33'):
         
         DEFAULT_IP33_DNS_SERVER = dns_server
         _LOGGER.debug("DNS API(IP33): DNS server changed to %s", dns_server)
-        
+
     elif api_server == 'nslookupio':
         dns_server = dns_server.strip()
         if dns_server == DEFAULT_NSLOOKUP_IO_DNS_SERVER:
@@ -55,7 +55,7 @@ async def async_query_by_nslookup_io(hass, domain, dns_server='cloudflare'):
 async def async_query_by_ip33(hass, domain, dns_server='114.114.114.114', query_type='A'):
     headers={"Content-Type": "application/x-www-form-urlencoded"}
     data = {"domain": domain, "dns": dns_server, "type": query_type}
-    func = functools.partial(requests.post, API_URL_IP33, headers=headers, data=urlencode(data), timeout=TIMEOUT, proxies={'http': 'http://192.168.10.245:8888','https': 'http://192.168.10.245:8888',})
+    func = functools.partial(requests.post, API_URL_IP33, headers=headers, data=urlencode(data), timeout=TIMEOUT)
     resp = await hass.async_add_executor_job(func)
     return resp
 
