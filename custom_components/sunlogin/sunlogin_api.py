@@ -10,6 +10,7 @@ import logging
 import textwrap
 from abc import ABC
 from requests.auth import AuthBase
+from requests.adapters import HTTPAdapter
 from .const import PLUG_DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -512,11 +513,12 @@ class PlugAPI_V2(HTTPRequest):
 class PlugAPI_V2_FAST(HTTPRequest):
     _address = None
     _process_address = dict()
-    
+
     def __init__(self, hass, address):
         self.hass = hass
         self.address = address
         # self._address = HTTPS_SUFFIX + '47.111.169.221' + PLUG_PATH
+        self.adapters = dict()
         self.session = requests.Session()
 
     @property
@@ -527,7 +529,8 @@ class PlugAPI_V2_FAST(HTTPRequest):
     @address.setter
     def address(self, address):
         self._address = address
-        self.process_address(address)
+        if self._process_address.get(address) is None:
+            self._process_address[address] = address    
     
     def calc_key(self, sn):
         # return calc_key_with_str(sn)
@@ -537,13 +540,14 @@ class PlugAPI_V2_FAST(HTTPRequest):
         if self._process_address.get(address) is None:
             self._process_address[address] = address          
 
-    def process_cert(self, fn=''):
-        adapter = self.session.get_adapter('https://')
-        connection_pool_kwargs = adapter.poolmanager.connection_pool_kw
-        if fn == 'async_get_power_consumes':
-            connection_pool_kwargs['assert_hostname'] = None
-        else:
+    def process_cert(self):
+        address = self._process_address[self._address]
+        if address != self._address and self.adapters.get(address) is None:
+            adapter = HTTPAdapter()
+            self.adapters[address] = adapter
+            connection_pool_kwargs = adapter.poolmanager.connection_pool_kw
             connection_pool_kwargs['assert_hostname'] = PLUG_DOMAIN
+            self.session.mount(address, adapter)
             
     async def async_get_status(self, sn, access_token):
         data = {API: API_GET_STATUS, SN: sn}
@@ -627,7 +631,6 @@ class PlugAPI_V2_FAST(HTTPRequest):
     async def async_get_power_consumes(self, sn, index=0):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
         
-        self.process_cert("async_get_power_consumes")
         resp = await self.async_make_request_by_requests("GET", url)
         return resp
     

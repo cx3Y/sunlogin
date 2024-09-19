@@ -312,6 +312,7 @@ async def aysnc_dns_update(hass):
     if ip is not None:
         api = PlugAPI_V2_FAST(hass, PLUG_URL)
         api._process_address[PLUG_URL] = PLUG_URL.replace(PLUG_DOMAIN, ip)
+        # api.process_cert()
         _LOGGER.debug(f"DNS update success, {PLUG_DOMAIN}: {ip}")
 
 async def async_devices_update(hass):
@@ -711,7 +712,7 @@ def config_options(hass, entry, diff):
     if (dns_server := diff.get(CONF_DNS_SERVER)) is not None:
         change_dns_server(dns_server)
         data[CONF_DNS_SERVER] = dns_server
-    if (dns_interval := diff.get(CONF_DNS_UPDATE_INTERVAL)) is not None and dns_interval >= 3600*2:
+    if (dns_interval := diff.get(CONF_DNS_UPDATE_INTERVAL)) is not None and dns_interval >= 60:
         DEFAULT_DNS_UPDATE_INTERVAL.interval = dns_interval
         data[CONF_DNS_UPDATE_INTERVAL] = dns_interval
         
@@ -750,9 +751,6 @@ class SunLogin:
         
         r_json = resp.json()
         self.token.config = r_json
-        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        # self.refresh_expire = time.time()+30*24*3600
         self.userid = self.token.token_decode().get('uid')
 
         return "ok"
@@ -766,9 +764,6 @@ class SunLogin:
         
         r_json = resp.json()
         self.token.config = r_json
-        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        # self.refresh_expire = time.time()+30*24*3600
         self.userid = self.token.token_decode().get('uid')
 
         return "ok"
@@ -781,9 +776,6 @@ class SunLogin:
         
         r_json = resp.json()
         self.token.config = r_json
-        # self.access_token = r_json.get(CONF_ACCESS_TOKEN, '')
-        # self.refresh_token = r_json.get(CONF_REFRESH_TOKEN, '')
-        # self.refresh_expire = time.time()+30*24*3600
         self.userid = r_json.get('userid')
 
         return "ok"    

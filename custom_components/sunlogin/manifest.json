@@ -12,6 +12,9 @@
         "PyQRCode==1.2.1",
         "pypng==0.20220715.0"
     ],
-    "version": "3.0.1"
+    "version": "3.0.2",
+    "options": {
+        "debug": true
+    }
 }
   

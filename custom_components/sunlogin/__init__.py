@@ -23,6 +23,8 @@ from homeassistant.const import (
     CONF_IP_ADDRESS,
     EVENT_HOMEASSISTANT_STOP,
     SERVICE_RELOAD,
+    MAJOR_VERSION,
+    MINOR_VERSION,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import HomeAssistantView
@@ -141,6 +143,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     #     return
 
     _LOGGER.debug(entry.as_dict())
+    ha_version = MAJOR_VERSION * 100 + MINOR_VERSION
     local = entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS) is not None
     options = {
         CONF_REMOTE_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.remote.seconds,
@@ -172,13 +175,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hass.data[DOMAIN][CONFIG][entry.entry_id] = config
     # hass.data[DOMAIN][CONF_SCAN_INTERVAL] = entry.data[CONF_USER_INPUT][CONF_SCAN_INTERVAL]
 
-    async def setup_entities(device_ids):
-        for dev_id in device_ids:
-            device_config = entry.data[CONF_DEVICES][dev_id]
-            device = get_sunlogin_device(hass, device_config)
-            if device is None: continue
-            config[SL_DEVICES].append(device)
+    for dev_id, device_config in entry.data[CONF_DEVICES].items():
+        device = get_sunlogin_device(hass, device_config)
+        if device is None: continue
+        config[SL_DEVICES].append(device)
 
+    if ha_version >= 202408:
+        await hass.config_entries.async_forward_entry_setups(entry, ['switch','sensor'])
+    else:
         await asyncio.gather(
             *[
                 hass.config_entries.async_forward_entry_setup(entry, platform)
@@ -186,23 +190,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             ]
         )
 
-        if local:
-            options[CONF_ENABLE_DEVICES_UPDATE] = False
-            options[CONF_ENABLE_DNS_INJECTOR] = False
-        options.update(entry.options)
-        config_options(hass, entry, options)
-        hass.config_entries.async_update_entry(entry, options=options)
-        if not local:
-            _async_refresh_token = functools.partial(token.async_refresh_token, hass)
-            update_manager.add_task('token_update', _async_refresh_token, DEFAULT_TOKEN_UPDATE_INTERVAL, 40)
-        update_manager.add_task('config_update', store_manager.async_store_entry, DEFAULT_CONFIG_UPDATE_INTERVAL, 60*2)
-        
-        for device in config[SL_DEVICES]:
-            await device.async_setup(update_manager)
-        #await hass.config_entries.async_reload(entry.entry_id)
-
+    if local:
+        options[CONF_ENABLE_DEVICES_UPDATE] = False
+        options[CONF_ENABLE_DNS_INJECTOR] = False
+    options.update(entry.options)
+    config_options(hass, entry, options)
+    hass.config_entries.async_update_entry(entry, options=options)
+    if not local:
+        _async_refresh_token = functools.partial(token.async_refresh_token, hass)
+        update_manager.add_task('token_update', _async_refresh_token, DEFAULT_TOKEN_UPDATE_INTERVAL, 40)
+    update_manager.add_task('config_update', store_manager.async_store_entry, DEFAULT_CONFIG_UPDATE_INTERVAL, 60*2)
     
-    hass.async_create_task(setup_entities(entry.data[CONF_DEVICES].keys()))
+    for device in config[SL_DEVICES]:
+        await device.async_setup(update_manager)
+
+    # hass.async_create_task(setup_entities(entry.data[CONF_DEVICES].keys()))
     
 
     # unsub_listener = entry.add_update_listener(update_listener)

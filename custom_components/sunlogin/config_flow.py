@@ -283,14 +283,42 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_qrcode(self, user_input=None):
-        
         if not self.qrtask:
-            self.qrtask = self.hass.async_create_task(self.make_qrcode_img())
-            return self.async_show_progress(
-                step_id="qrcode",
-                progress_action="qrcode1",
-            )
-
+            if self.qrstep == 0:
+                _LOGGER.debug("Generating QR code...")
+                self.qrtask = self.hass.async_create_task(self.make_qrcode_img())
+                return self.async_show_progress(
+                    step_id="change_ui",
+                    progress_action="qrcode1",
+                )
+            elif self.qrstep == 1:
+                _LOGGER.debug("Scanning QR code...")
+                self.qrtask = self.hass.async_create_task(self.check_qrcode_status())
+                return self.async_show_progress(
+                    step_id="change_ui",
+                    progress_action="qrcode2",
+                    description_placeholders={"msg": self.qrdata.get('image')}
+                )
+            elif self.qrstep == 2:
+                _LOGGER.debug("Finishing QR code...")
+                self.sunlogin.hass = self.hass
+                self.qrtask = self.hass.async_create_task(self.qrcode_finish())
+                return self.async_show_progress(
+                    step_id="change_ui",
+                    progress_action="qrcode3",
+                    description_placeholders={"msg": ''}
+                )
+            elif self.qrstep == 3:
+                _LOGGER.debug("Creating entry...")
+                self.qrstep = 0
+                return await self._create_entry({})
+            
+        self.qrtask = None
+        return self.async_show_progress_done(next_step_id="qrcode")
+    
+    async def async_step_change_ui(self, user_input=None):
+        if self.qrtask is None:
+            return self.async_show_progress_done(next_step_id="qrcode")
         try:
             await self.qrtask
         except asyncio.TimeoutError:
@@ -298,53 +326,18 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # return self.async_show_progress_done(next_step_id="pairing_timeout")
 
         self.qrtask = None
-        return self.async_show_progress_done(next_step_id="qrcode_scan")
+        return self.async_show_progress_done(next_step_id="qrcode")
 
-
-    async def async_step_qrcode_scan(self, user_input=None):
-        placeholders = {"msg": self.qrdata.get('image')}
-        
-        if not self.qrtask:
-            self.qrtask = self.hass.async_create_task(self.check_qrcode_status())
-            return self.async_show_progress(
-                step_id="qrcode_scan",
-                progress_action="qrcode2",
-                description_placeholders=placeholders,
-            )
-
-        try:
-            await self.qrtask
-        except asyncio.TimeoutError:
-            self.qrtask = None
-            # return self.async_show_progress_done(next_step_id="pairing_timeout")
-
-        self.qrtask = None
-        return self.async_show_progress_done(next_step_id="qrcode_finish")
-
-    async def async_step_qrcode_finish(self, user_input=None):
-        placeholders = {"msg": ''}
-
-        if not self.qrtask:
-            self.sunlogin.hass = self.hass
-            self.qrtask = self.hass.async_create_task(self.qrcode_finish())
-            return self.async_show_progress(
-                step_id="qrcode_finish",
-                progress_action="qrcode3",
-                description_placeholders=placeholders,
-            )
-
-        try:
-            await self.qrtask
-        except asyncio.TimeoutError:
-            self.qrtask = None
-            # return self.async_show_progress_done(next_step_id="pairing_timeout")
-
-        self.qrtask = None
-        return self.async_show_progress_done(next_step_id="finish")
-
-    async def qrcode_finish(self):
-        res = await attempt_connection(self.sunlogin, 3, self.qrdata.get('secret'))
-
+    async def make_qrcode_img(self):
+        resp =  await self.api_v2.async_get_qrdata()
+        if not resp.ok:
+            # raise error
+            pass
+        r_json = resp.json()
+        qrdata = make_qrcode_base64_v2(r_json)
+        if qrdata is not None:
+            self.qrdata = qrdata
+            self.qrstep += 1
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
@@ -353,8 +346,13 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         failed_count = 0
         key = self.qrdata.get('key')
         # await asyncio.sleep(2)
+        tick_count = 0
         while failed_count < 3:
             await asyncio.sleep(3)
+            tick_count += 1
+            if tick_count * 3 > 170:
+                failed_count = 3
+                break
             try:
                 resp = await self.api_v2.async_get_qrstatus(key)
             except:
@@ -364,43 +362,33 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 failed_count += 1
 
             r_json = resp.json()
-            if r_json['status'] == 2:
-                self.qrstep = 4
+            try:
+                status = r_json['status']
+            except:
+                failed_count += 2
+                continue
+            
+            if status == 2:
+                self.qrstep += 1
                 self.qrdata['secret'] = r_json.get('secret')
                 break
+            
 
-        if failed_count == 3:
+        if failed_count >= 3:
             #raise error
-            self.qrstep = 0
-        else:
-            self.hass.async_create_task(
-                self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
-            )
-
-    async def make_qrcode_img(self):
-        resp =  await self.api_v2.async_get_qrdata()
-        if not resp.ok:
-            # raise error
-            pass
-        r_json = resp.json()
-        qrdata = make_qrcode_base64_v2(r_json)
-        # qrdata = r_json.get('qrdata')
-        # key = r_json.get('key')
-        if qrdata is not None:
-            # buffer = io.BytesIO()
-            # url = pyqrcode.create(qrdata)
-            # # url.png(buffer, scale=5, module_color="#EEE", background="#FFF")
-            # url.png(buffer, scale=5, module_color="#000", background="#FFF")
-            # image_base64 = str(base64.b64encode(buffer.getvalue()), encoding='utf-8')
-            # image = f'![image](data:image/png;base64,{image_base64})'
-            # self.qrstep = 2
-            # self.qrdata = {"image": image, "time": time.time(), "key": key}
-            # _LOGGER.debug("make_qrcode_img: %s", self.qrdata)
-            self.qrdata = qrdata
+            self.qrstep -= 1
+        
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
-            
+
+    async def qrcode_finish(self):
+        res = await attempt_connection(self.sunlogin, 3, self.qrdata.get('secret'))
+
+        self.qrstep += 1
+        self.hass.async_create_task(
+            self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
+        )
 
     async def _create_entry(self, user_input):
         """Register new entry."""
@@ -452,13 +440,6 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title=user_input.get(CONF_IP_ADDRESS),
             data=entry,
         )
-
-    async def async_step_finish(self, user_input=None):#loadqrcode
-
-        if user_input is not None:
-            pass
-        return await self._create_entry({})
-
         
     async def async_step_import(self, user_input):
         """Handle import from YAML."""
