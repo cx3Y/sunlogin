@@ -194,6 +194,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         options[CONF_ENABLE_DEVICES_UPDATE] = False
         options[CONF_ENABLE_DNS_INJECTOR] = False
     options.update(entry.options)
+    if options[CONF_DNS_SERVER] == "114.114.114.114":
+        options[CONF_DNS_SERVER] = DEFAULT_DNS_SERVER
     config_options(hass, entry, options)
     hass.config_entries.async_update_entry(entry, options=options)
     if not local:
