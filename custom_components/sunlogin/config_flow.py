@@ -395,7 +395,7 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # if self._async_current_entries():
         #     return self.async_abort(reason="already_configured")
         unique_id = self.sunlogin.userid if self.sunlogin.userid is not None else user_input.get(CONF_USERNAME)
-        await self.async_set_unique_id(unique_id)
+        await self.async_set_unique_id(str(unique_id))
 
         devices = device_filter(self.sunlogin.device_list)
         
