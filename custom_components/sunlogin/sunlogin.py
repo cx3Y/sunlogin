@@ -904,12 +904,12 @@ class SunloginPlug(SunLoginDevice, ABC):
     @property
     def remote_address(self):
         remote_address = self.config.get(CONF_DEVICE_ADDRESS)
-        if remote_address is None:
-            return None
         if PLUG_API_VERSION == 1:
             return remote_address
-        elif PLUG_API_VERSION == 2 :
+        elif PLUG_API_VERSION == 2:
             return PLUG_URL
+        if remote_address is None:
+            return None
     
     @property
     def local_address(self):
