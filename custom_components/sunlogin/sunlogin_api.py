@@ -317,7 +317,7 @@ class PlugAPI_V1(HTTPRequest):
     
     def __init__(self, hass, address):
         self.hass = hass
-        self._address = address
+        self.address = address
         self.session = requests.Session()
 
     @property
@@ -408,7 +408,7 @@ class PlugAPI_V2(HTTPRequest):
     
     def __init__(self, hass, address):
         self.hass = hass
-        self._address = address
+        self.address = address
         # self._address = HTTPS_SUFFIX + '47.111.169.221' + PLUG_PATH
         self.session = requests.Session()
 
