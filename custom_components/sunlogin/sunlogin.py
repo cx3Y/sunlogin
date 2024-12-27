@@ -550,7 +550,7 @@ def plug_electric_process(data):
         power = power / 1000
         status[DP_POWER] = power
 
-    if (sub_electric := data.get('sub')) is not None and not isinstance(sub_electric, int):
+    if (sub_electric := data.get('sub')) is not None and isinstance(sub_electric, list):
         for index, electric in enumerate(sub_electric):
             sub_current = electric['cur']
             sub_current = sub_current // 1000
@@ -904,12 +904,12 @@ class SunloginPlug(SunLoginDevice, ABC):
     @property
     def remote_address(self):
         remote_address = self.config.get(CONF_DEVICE_ADDRESS)
+        if remote_address is None:
+            return None
         if PLUG_API_VERSION == 1:
             return remote_address
         elif PLUG_API_VERSION == 2:
             return PLUG_URL
-        if remote_address is None:
-            return None
     
     @property
     def local_address(self):
@@ -921,7 +921,10 @@ class SunloginPlug(SunLoginDevice, ABC):
     @property
     def default_address(self):
         address = self.remote_address if self.remote_address else self.local_address
-        return address
+        if address is not None:
+            return address
+        # xxx-V3 only (*)  no remote_address, but it is not local
+        return PLUG_URL
     
     @property
     def unique_id(self) -> str | None:
