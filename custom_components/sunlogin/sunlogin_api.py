@@ -428,7 +428,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_STATUS, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -438,7 +438,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_PLUG_ELECTRIC, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -447,7 +447,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_PLUG_INFO, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -456,7 +456,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_SN, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -465,7 +465,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_GET_WIFI_INFO, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -474,7 +474,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_SET_STATUS, SN: sn, "index": index, "status": status}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -483,7 +483,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_SET_PLUG_LED, SN: sn, "enabled": status}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -492,7 +492,7 @@ class PlugAPI_V2(HTTPRequest):
         data = {API: API_SET_PLUG_DFLTSTAT, SN: sn, "default": status*2}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
 
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -553,7 +553,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_GET_STATUS, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -563,7 +563,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_GET_PLUG_ELECTRIC, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -572,7 +572,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_GET_PLUG_INFO, SN: sn}
         data.update(self.calc_key(sn))
 
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -581,7 +581,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_GET_SN, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -590,7 +590,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_GET_WIFI_INFO, SN: sn}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -599,7 +599,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_SET_STATUS, SN: sn, "index": index, "status": status}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -608,7 +608,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_SET_PLUG_LED, SN: sn, "enabled": status}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
@@ -617,7 +617,7 @@ class PlugAPI_V2_FAST(HTTPRequest):
         data = {API: API_SET_PLUG_DFLTSTAT, SN: sn, "default": status*2}
         data.update(self.calc_key(sn))
         
-        headers = {'Host': PLUG_DOMAIN, 'User-Agent': USER_AGENT}
+        headers = {'Host': PLUG_DOMAIN}
         self.process_cert()
         resp = await self.async_make_request_by_requests("GET", self.address, data=data, headers=headers, auth=SunloginAuth(access_token))
         return resp
