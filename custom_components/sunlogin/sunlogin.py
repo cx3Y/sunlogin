@@ -337,31 +337,53 @@ async def async_guess_model(hass, ip):
     plug_api = PlugAPI_V1(hass, local_address)
 
     resp_sn = await plug_api.async_get_sn()
-    sn = resp_sn.json()[CONF_DEVICE_SN]
-    try:
-        resp_electric = await plug_api.async_get_electric(sn)
-        check_electric = resp_electric.json()['result']
-    except: pass
+    sn_json = resp_sn.json()
+    sn = sn_json[CONF_DEVICE_SN]
+    device_type = sn_json.get('type')
 
-    try:
-        resp_state = await plug_api.async_get_status(sn)
-        check_slot = len(resp_state.json()['response'])
-    except: pass
-
-    if check_electric == 0: #support electric
-        if check_slot == 1:
-            model = 'C2'
-        elif check_slot == 3:
-            model = 'P4'
-        elif check_slot == 4:
-            model = 'P1Pro'
-        elif check_slot == 8:
-            model = 'P8Pro'
+    if device_type == 'e':
+        model = 'C1-2'
+    elif device_type == 'plug-b2':
+        model = 'C1Pro'
+    elif device_type == 'o':
+        model = 'C1'
+    elif device_type == 'plug-c2':
+        model = 'C2'
+    elif device_type == 'P1Pro':
+        model = 'P1Pro'
+    elif device_type == 'e2':
+        model = 'P1'
+    elif device_type == 'ps-3310':
+        model = 'P2'
+    elif device_type == 'P4':
+        model = 'P4'
+    elif device_type == 'P8':
+        model = 'P8'
     else:
-        if check_slot == 1:
-            model = 'C1Pro'
-        elif check_slot == 3:
-            model = 'P2'
+        try:
+            resp_electric = await plug_api.async_get_electric(sn)
+            check_electric = resp_electric.json()['result']
+        except: pass
+
+        try:
+            resp_state = await plug_api.async_get_status(sn)
+            check_slot = len(resp_state.json()['response'])
+        except: pass
+
+        if check_electric == 0: #support electric
+            if check_slot == 1:
+                model = 'C2'
+            elif check_slot == 3:
+                model = 'P4'
+            elif check_slot == 4:
+                model = 'P1Pro'
+            elif check_slot == 8:
+                model = 'P8Pro'
+        else:
+            if check_slot == 1:
+                model = 'C1Pro'
+            elif check_slot == 3:
+                model = 'P2'
     
     return sn, model
 
