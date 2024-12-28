@@ -329,7 +329,8 @@
                     "dns_update_interval": "DNS 更新间隔",
                     "enable_proxy": "启用代理",
                     "proxy_server": "代理服务器",
-                    "enable_encrypt_log": "启用加密日志"
+                    "enable_encrypt_log": "启用加密日志",
+                    "unavailable_after_retries": "超过重试次数后，将设备标记为不可用"
                 }
             },
             "yaml_import": {

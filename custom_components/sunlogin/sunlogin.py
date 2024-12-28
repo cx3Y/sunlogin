@@ -84,6 +84,7 @@ from .const import (
     CONF_ENABLE_PROXY,
     CONF_PROXY_SERVER,
     CONF_ENABLE_ENCRYPT_LOG,
+    CONF_UNAVAILABLE_AFTER_RETRIES,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
     DEFAULT_ENABLE_PROXY,
@@ -661,6 +662,10 @@ def get_update_manager(hass) -> UpdateManager:
     update_manager = config[CONF_UPDATE_MANAGER]
     return update_manager
 
+def get_max_retries(hass) -> int:
+    entry = config_entries.current_entry.get()
+    return entry.options.get(CONF_UNAVAILABLE_AFTER_RETRIES)
+
 def make_qrcode_base64_v2(r_json):
     qrdata = r_json.get('qrdata')
     key = r_json.get('key')
@@ -755,6 +760,9 @@ def config_options(hass, entry, diff):
 
     if (encrypt_enable := diff.get(CONF_ENABLE_ENCRYPT_LOG)) is not None:
         data[CONF_ENABLE_ENCRYPT_LOG] = encrypt_enable
+
+    if (retry_times := diff.get(CONF_UNAVAILABLE_AFTER_RETRIES)) is not None and retry_times >= 0:
+        data[CONF_UNAVAILABLE_AFTER_RETRIES] = retry_times
     
     return data
     
@@ -926,6 +934,9 @@ class SunloginPlug(SunLoginDevice, ABC):
     update_interval = None
     device_entry = None
     token = None
+    status_fail_count = None
+    electric_fail_count = None
+    power_consumes_fail_count = None
     
     @property
     def remote_address(self):
@@ -1095,9 +1106,12 @@ class SunloginPlug(SunLoginDevice, ABC):
             r_json = resp.json()
             self._status.update(plug_status_process(r_json))
             self._available = True
+            self.status_fail_count = 0
         except Exception as e: 
             _LOGGER.debug(f"{self.name} (api.async_get_status): {e}")
-            self._available = False
+            if self.status_fail_count >= get_max_retries(self.hass):
+                self._available = False
+            self.status_fail_count += 1
 
         self.write_ha_state()   
 
@@ -1108,9 +1122,12 @@ class SunloginPlug(SunLoginDevice, ABC):
             r_json = resp.json()
             self._status.update(plug_electric_process(r_json))
             self._available = True
+            self.electric_fail_count = 0
         except Exception as e: 
             _LOGGER.debug(f"{self.name} (api.async_get_electric): {e}")
-            self._available = False
+            if self.electric_fail_count >= get_max_retries(self.hass):
+                self._available = False
+            self.electric_fail_count += 1
 
         self.write_ha_state()
 
@@ -1119,10 +1136,13 @@ class SunloginPlug(SunLoginDevice, ABC):
             resp = await self.api.async_get_power_consumes(self.sn)
             r_json = resp.json()
             self._status.update(plug_power_consumes_process(r_json))
+            self.power_consumes_fail_count = 0
         except: 
             if self.status(DP_REMOTE):
-                self._available = False
-        
+                if self.power_consumes_fail_count >= get_max_retries(self.hass):
+                    self._available = False
+                self.power_consumes_fail_count += 1
+
         self.write_ha_state()
     
     async def async_update_sn(self):
