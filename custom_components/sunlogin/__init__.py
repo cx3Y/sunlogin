@@ -5,6 +5,11 @@ import logging
 import time
 import requests
 import functools
+import json
+import base64
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 from datetime import timedelta
 
 import homeassistant.helpers.config_validation as cv
@@ -75,11 +80,13 @@ from .const import (
     CONF_ENABLE_PROXY,
     CONF_PROXY_SERVER,
     CONF_ENABLE_DEVICES_UPDATE,
+    CONF_ENABLE_ENCRYPT_LOG,
     DEFAULT_ENABLE_DEVICES_UPDATE,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
     DEFAULT_ENABLE_PROXY,
     DEFAULT_PROXY_SERVER,
+    DEFAULT_ENABLE_ENCRYPT_LOG,
     CONF_DNS_UPDATE,
     CONF_RELOAD_FLAG,
     CONF_DEVICE_ADDRESS,
@@ -91,6 +98,7 @@ from .const import (
     SL_DEVICES,
     CLOUD_DATA,
     DOMAIN,
+    PUBLIC_KEY,
     PLUG_DOMAIN,
     CONF_PAIRING_QR_SECRET,
     CONF_PAIRING_QR,
@@ -117,6 +125,28 @@ SERVICE_SET_DP_SCHEMA = vol.Schema(
     }
 )
 
+def entity_data_process(data):
+    if data['options'].get(CONF_ENABLE_ENCRYPT_LOG, True):
+        encypt_data = list()
+        json_data = json.dumps(data)
+        messages = [json_data[i:i+50] for i in range(0, len(json_data), 50)]
+        for message in messages:
+            message = message.encode('utf-8')
+            public_key = serialization.load_pem_public_key(PUBLIC_KEY.encode('utf-8'))
+            ciphertext = public_key.encrypt(
+                message,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+            encypt_data.append(base64.b64encode(ciphertext).decode('utf-8'))
+        return encypt_data
+    else:
+        return data
+            
+
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the LocalTuya integration component."""
     hass.data.setdefault(DOMAIN, {})
@@ -142,7 +172,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     #     )
     #     return
 
-    _LOGGER.debug(entry.as_dict())
+    _LOGGER.debug(entity_data_process(entry.as_dict()))
     ha_version = MAJOR_VERSION * 100 + MINOR_VERSION
     local = entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS) is not None
     options = {
@@ -158,6 +188,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         CONF_DNS_UPDATE_INTERVAL: DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds,
         CONF_ENABLE_PROXY: DEFAULT_ENABLE_PROXY,
         CONF_PROXY_SERVER: DEFAULT_PROXY_SERVER,
+        CONF_ENABLE_ENCRYPT_LOG: DEFAULT_ENABLE_ENCRYPT_LOG,
     }
     # if entry.entry_id in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
     #     await async_sunlogin_reload_entry(hass, entry)

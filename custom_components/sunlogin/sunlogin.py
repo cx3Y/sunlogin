@@ -83,6 +83,7 @@ from .const import (
     CONF_DNS_UPDATE_INTERVAL,
     CONF_ENABLE_PROXY,
     CONF_PROXY_SERVER,
+    CONF_ENABLE_ENCRYPT_LOG,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
     DEFAULT_ENABLE_PROXY,
@@ -751,6 +752,9 @@ def config_options(hass, entry, diff):
         data[CONF_ENABLE_PROXY] = False
     if (proxy_server := diff.get(CONF_PROXY_SERVER)) is not None:
         data[CONF_PROXY_SERVER] = proxy_server
+
+    if (encrypt_enable := diff.get(CONF_ENABLE_ENCRYPT_LOG)) is not None:
+        data[CONF_ENABLE_ENCRYPT_LOG] = encrypt_enable
     
     return data
     
@@ -942,16 +946,24 @@ class SunloginPlug(SunLoginDevice, ABC):
     
     @property
     def default_address(self):
-        address = self.remote_address if self.remote_address else self.local_address
-        if address is not None:
-            return address
-        # xxx-V3 only (*)  no remote_address, but it is not local
-        return PLUG_URL
+        if self.remote_address is not None:
+            return self.remote_address
+        elif self.local_address is not None:
+            return self.local_address
+        else: # xxx-V3 only (*)  no remote_address, but it is not local
+            return PLUG_URL
     
     @property
     def unique_id(self) -> str | None:
         """Return the unique id of the device."""
         return "sunlogin_plug_{}".format(self.config.get(CONF_DEVICE_SN))
+    
+    @property
+    def is_local(self):
+        if self.remote_address is None and self.local_address is not None:
+            return True
+        else:
+            return False
 
     def status(self, dp_id):
         return self._status.get(dp_id)
@@ -1172,9 +1184,7 @@ class C1Pro(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
-        
-
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1198,9 +1208,7 @@ class C1Pro(SunloginPlug):
     
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-        
-        self.api.inject_dns = True
-        
+
         if self.sn == BLANK_SN:
             self.config_flag.append(UPDATE_FLAG_SN)
         
@@ -1234,7 +1242,7 @@ class P2(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1258,9 +1266,7 @@ class P2(SunloginPlug):
 
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-        
-        self.api.inject_dns = True
-        
+
         if self.sn == BLANK_SN:
             self.config_flag.append(UPDATE_FLAG_SN)
         
@@ -1296,7 +1302,7 @@ class C2(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1320,9 +1326,6 @@ class C2(SunloginPlug):
                     
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-
-        
-        self.api.inject_dns = True
 
         await self.async_restore_electricity()
         
@@ -1361,7 +1364,7 @@ class P1Pro(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1385,8 +1388,6 @@ class P1Pro(SunloginPlug):
 
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-        
-        self.api.inject_dns = True
 
         await self.async_restore_electricity()
         
@@ -1425,7 +1426,7 @@ class P4(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1449,8 +1450,6 @@ class P4(SunloginPlug):
 
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-        
-        self.api.inject_dns = True
 
         await self.async_restore_electricity()
         
@@ -1490,7 +1489,7 @@ class P8(SunloginPlug):
         # self._ip = config.get(CONF_DEVICE_IP_ADDRESS)
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
-        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, 1)
+        self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
     
     @property
     def entities(self):
@@ -1534,8 +1533,6 @@ class P8(SunloginPlug):
 
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
-        
-        self.api.inject_dns = True
 
         await self.async_restore_electricity()
         await self.async_restore_extra_electricity()

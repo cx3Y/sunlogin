@@ -56,6 +56,8 @@ from .const import (
     CONF_ENABLE_PROXY,
     CONF_PROXY_SERVER,
     CONF_ENABLE_DEVICES_UPDATE,
+    CONF_ENABLE_ENCRYPT_LOG,
+    DEFAULT_ENABLE_ENCRYPT_LOG,
     DEFAULT_ENABLE_DEVICES_UPDATE,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
@@ -90,6 +92,7 @@ CONFIGURE_SCHEMA = vol.Schema(
         vol.Required(CONF_DNS_UPDATE_INTERVAL, default=DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds): int,
         vol.Required(CONF_ENABLE_PROXY, default=DEFAULT_ENABLE_PROXY): bool,
         vol.Required(CONF_PROXY_SERVER, default=DEFAULT_PROXY_SERVER): cv.string,
+        vol.Required(CONF_ENABLE_ENCRYPT_LOG, default=DEFAULT_ENABLE_ENCRYPT_LOG): bool,
     }
 )
 

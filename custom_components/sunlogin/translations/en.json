@@ -328,7 +328,8 @@
                     "dns_server": "Set DNS server",
                     "dns_update_interval": "Set DNS update interval",
                     "enable_proxy": "Enable proxy",
-                    "proxy_server": "Set proxy server"
+                    "proxy_server": "Set proxy server",
+                    "enable_encrypt_log": "Enable encryption of log files"
                 }
             },
             "yaml_import": {
