@@ -17,13 +17,13 @@ SWITCH_TYPES = {
     "led": SwitchEntityDescription(
         key="led",
         translation_key="led",
-        device_class=SwitchDeviceClass.OUTLET,
+        device_class=SwitchDeviceClass.SWITCH,
         entity_registry_visible_default=False,
     ),
     "def_st": SwitchEntityDescription(
         key="def_st",
         translation_key="def_st",
-        device_class=SwitchDeviceClass.OUTLET,
+        device_class=SwitchDeviceClass.SWITCH,
         entity_registry_visible_default=False,
     ),
     "relay0": SwitchEntityDescription(
@@ -69,7 +69,7 @@ SWITCH_TYPES = {
     "remote": SwitchEntityDescription(
         key="remote",
         translation_key="remote",
-        device_class=SwitchDeviceClass.OUTLET,
+        device_class=SwitchDeviceClass.SWITCH,
         entity_registry_visible_default=False,
     )
 }
