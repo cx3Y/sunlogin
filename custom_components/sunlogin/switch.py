@@ -29,42 +29,42 @@ SWITCH_TYPES = {
     "relay0": SwitchEntityDescription(
         key="relay0",
         translation_key="relay0",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay1": SwitchEntityDescription(
         key="relay1",
         translation_key="relay1",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay2": SwitchEntityDescription(
         key="relay2",
         translation_key="relay2",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay3": SwitchEntityDescription(
         key="relay3",
         translation_key="relay3",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay4": SwitchEntityDescription(
         key="relay4",
         translation_key="relay4",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay5": SwitchEntityDescription(
         key="relay5",
         translation_key="relay5",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay6": SwitchEntityDescription(
         key="relay6",
         translation_key="relay6",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "relay7": SwitchEntityDescription(
         key="relay7",
         translation_key="relay7",
-        device_class=SwitchDeviceClass.SWITCH,
+        device_class=SwitchDeviceClass.OUTLET,
     ),
     "remote": SwitchEntityDescription(
         key="remote",
