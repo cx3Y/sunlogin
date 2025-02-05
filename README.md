@@ -18,12 +18,27 @@
 
 ## 安装
 
-方法1：下载并复制`custom_components/sunlogin`文件夹到HomeAssistant根目录下的`custom_components`文件夹即可完成安装
+### 方法 1：手动安装
 
-方法2：已经安装了HACS，可以点击按钮快速安装 [![通过HACS添加集成](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cx3Y&repository=sunlogin&category=integration)
+1. 下载插件并将 `custom_components/sunlogin` 文件夹复制到 Home Assistant 根目录下的 `custom_components` 文件夹
 
-## 配置
+### 方法 2：通过 HACS 安装
 
-配置 > 设备与服务 >  集成 >  添加集成 > 搜索`sunlogin`
+如果你已经安装了 [HACS](https://www.hacs.xyz/docs/use/download/download/)，可以点击下面的按钮快速添加：
 
-或者点击: [![添加集成](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=sunlogin)
+[![通过HACS添加集成](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cx3Y&repository=sunlogin&category=integration)
+
+或者，手动添加：
+
+1. 点击右上角的 `Custom repositories`
+2. 在弹出的窗口中输入以下信息：
+   - **Repository**: `https://github.com/cx3Y/sunlogin`
+   - **Type**: `Integration`
+
+## 添加集成
+
+进入 `设置` > `设备与服务` > `添加集成`，并搜索 `sunlogin`
+
+或者，点击下面的按钮直接添加集成：
+
+[![添加集成](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=sunlogin)
