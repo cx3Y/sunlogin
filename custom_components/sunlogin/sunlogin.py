@@ -950,6 +950,8 @@ class SunloginPlug(SunLoginDevice, ABC):
     
     @property
     def local_address(self):
+        if 'V3' in self.model:
+            return None
         if self._ip is not None: 
             return HTTP_SUFFIX + self._ip + LOCAL_PORT
         elif (ip := self.config.get(CONF_DEVICE_IP_ADDRESS)) is not None:
