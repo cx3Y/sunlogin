@@ -34,6 +34,8 @@ from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
     CONF_PLATFORM,
     CONF_DEVICES,
+    CONF_USERNAME,
+    CONF_PASSWORD,
 )
 from homeassistant.components import persistent_notification
 from homeassistant import config_entries
@@ -85,6 +87,7 @@ from .const import (
     CONF_PROXY_SERVER,
     CONF_ENABLE_ENCRYPT_LOG,
     CONF_UNAVAILABLE_AFTER_RETRIES,
+    CONF_USER_INPUT,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
     DEFAULT_ENABLE_PROXY,
@@ -1617,7 +1620,8 @@ class Token():
 
     @property
     def refresh_expire(self):
-        return self._config.get(CONF_REFRESH_EXPIRE, self.create_time+30*24*3600) - 60
+        refresh_expire = max(self._config.get(CONF_REFRESH_EXPIRE, 0), self.create_time+30*24*3600)
+        return refresh_expire - 60
     
     @property
     def token_expire(self):
@@ -1645,13 +1649,35 @@ class Token():
         if not self.validate() or time.time() > self.refresh_expire:
             _LOGGER.debug('need reauth')
             entry = config_entries.current_entry.get()
-            entry.async_start_reauth(hass)
-            return
+            if (user_input := entry.data.get(CONF_USER_INPUT)) is not None and user_input.get(CONF_PASSWORD) is not None:
+                username = user_input.get(CONF_USERNAME)
+                password = user_input.get(CONF_PASSWORD)
+                error, resp = await async_request_error_process(self.api.async_login_by_password, username, password)
+
+                if error is not None:
+                    _LOGGER.debug('reauth by password fail')
+                    _LOGGER.error(error)
+                    entry.async_start_reauth(hass)
+                    return
+                
+                r_json = resp.json()
+                self.config = r_json
+                store_manager = get_store_manager(hass)
+                store_manager.update_token(self.config)
+                _LOGGER.debug('Refresh token by password success')
+                return
+            else:
+                entry.async_start_reauth(hass)
+                return
         
         error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
         if error == 'lt/new_device_alert':
             if await async_login_new_client(hass, self.access_token):
                 error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
+        elif error is not None:
+            _LOGGER.debug('Refresh token fail')
+            _LOGGER.error(error)
+            return
         
         r_json = resp.json()
         self.config = r_json
