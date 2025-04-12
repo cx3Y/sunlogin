@@ -88,6 +88,7 @@ from .const import (
     CONF_ENABLE_ENCRYPT_LOG,
     CONF_UNAVAILABLE_AFTER_RETRIES,
     CONF_USER_INPUT,
+    DEFAULT_UNAVAILABLE_AFTER_RETRIES,
     DEFAULT_ENABLE_DNS_INJECTOR,
     DEFAULT_DNS_SERVER,
     DEFAULT_ENABLE_PROXY,
@@ -667,7 +668,7 @@ def get_update_manager(hass) -> UpdateManager:
 
 def get_max_retries(hass) -> int:
     entry = config_entries.current_entry.get()
-    return entry.options.get(CONF_UNAVAILABLE_AFTER_RETRIES)
+    return entry.options.get(CONF_UNAVAILABLE_AFTER_RETRIES, DEFAULT_UNAVAILABLE_AFTER_RETRIES)
 
 def make_qrcode_base64_v2(r_json):
     qrdata = r_json.get('qrdata')
@@ -1210,6 +1211,9 @@ class C1Pro(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
@@ -1268,6 +1272,9 @@ class P2(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
@@ -1328,6 +1335,9 @@ class C2(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
@@ -1390,6 +1400,9 @@ class P1Pro(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
@@ -1452,6 +1465,9 @@ class P4(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
@@ -1515,6 +1531,9 @@ class P8(SunloginPlug):
         self.token = get_token(hass)
         self.api = PlugAPI_V2_FAST(self.hass, self.default_address)
         self.update_interval = PlugUpdateInterval(DEFAULT_UPDATE_INTERVAL, int(not self.is_local))
+        self.status_fail_count = 0
+        self.electric_fail_count = 0
+        self.power_consumes_fail_count = 0
     
     @property
     def entities(self):
