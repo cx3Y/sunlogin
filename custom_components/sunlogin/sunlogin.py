@@ -708,10 +708,10 @@ def config_options(hass, entry, diff):
         data[CONF_LOCAL_UPDATE_INTERVAL] = local
     # if (power_consumes_interval := diff.get(CONF_POWER_CONSUMES_UPDATE_INTERVAL)) is not None and power_consumes_interval >= 1200:
     #     DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL.interval = power_consumes_interval
-    if (config_interval := diff.get(CONF_CONFIG_UPDATE_INTERVAL)) is not None and config_interval >= 900:
+    if (config_interval := diff.get(CONF_CONFIG_UPDATE_INTERVAL)) is not None and config_interval >= 10:
         DEFAULT_CONFIG_UPDATE_INTERVAL.interval = config_interval
         data[CONF_CONFIG_UPDATE_INTERVAL] = config_interval
-    if (token_interval := diff.get(CONF_TOKEN_UPDATE_INTERVAL)) is not None and token_interval >= 600:
+    if (token_interval := diff.get(CONF_TOKEN_UPDATE_INTERVAL)) is not None and token_interval >= 240:
         DEFAULT_TOKEN_UPDATE_INTERVAL.interval = token_interval
         data[CONF_TOKEN_UPDATE_INTERVAL] = token_interval
 
