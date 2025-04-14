@@ -1700,7 +1700,7 @@ class Token():
         
         r_json = resp.json()
         self.config = r_json
-
+        # _LOGGER.debug(r_json)
         store_manager = get_store_manager(hass)
         store_manager.update_token(self.config)
         _LOGGER.debug('Refresh token success')
