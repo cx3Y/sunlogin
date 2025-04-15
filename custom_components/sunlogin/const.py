@@ -51,6 +51,7 @@ CONF_UPDATE_MANAGER = 'update_manager'
 CONF_STORE_MANAGER ='store_manager'
 CONF_DNS_UPDATE = 'dns_update'
 CONF_UNAVAILABLE_AFTER_RETRIES = 'unavailable_after_retries'
+CONF_OPTIONS_VERSION = 'options_version'
 
 CONF_USER_INPUT = "user_input"
 

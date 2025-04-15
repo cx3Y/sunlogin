@@ -89,6 +89,7 @@ from .const import (
     DEFAULT_ENABLE_PROXY,
     DEFAULT_PROXY_SERVER,
     DEFAULT_ENABLE_ENCRYPT_LOG,
+    CONF_OPTIONS_VERSION,
     CONF_DNS_UPDATE,
     CONF_RELOAD_FLAG,
     CONF_DEVICE_ADDRESS,
@@ -230,6 +231,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     options.update(entry.options)
     if options[CONF_DNS_SERVER] == "114.114.114.114":
         options[CONF_DNS_SERVER] = DEFAULT_DNS_SERVER
+    if options.get(CONF_OPTIONS_VERSION, 100) < 305:
+        options[CONF_TOKEN_UPDATE_INTERVAL] = 300
+        options[CONF_OPTIONS_VERSION] = 305
     config_options(hass, entry, options)
     hass.config_entries.async_update_entry(entry, options=options)
     if not local:
