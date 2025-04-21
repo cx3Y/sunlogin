@@ -128,6 +128,23 @@ SERVICE_SET_DP_SCHEMA = vol.Schema(
     }
 )
 
+DEFAULT_OPTIONS = {
+    CONF_REMOTE_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.remote.seconds,
+    CONF_LOCAL_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.local.seconds,
+    CONF_POWER_CONSUMES_UPDATE_INTERVAL: DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL.interval.seconds,
+    CONF_CONFIG_UPDATE_INTERVAL: DEFAULT_CONFIG_UPDATE_INTERVAL.interval.seconds,
+    CONF_TOKEN_UPDATE_INTERVAL: DEFAULT_TOKEN_UPDATE_INTERVAL.interval.seconds,
+    CONF_ENABLE_DEVICES_UPDATE: DEFAULT_ENABLE_DEVICES_UPDATE,
+    CONF_DEVICES_UPDATE_INTERVAL: DEFAULT_DEVICES_UPDATE_INTERVAL.interval.seconds,
+    CONF_ENABLE_DNS_INJECTOR: DEFAULT_ENABLE_DNS_INJECTOR,
+    CONF_DNS_SERVER: DEFAULT_DNS_SERVER,
+    CONF_DNS_UPDATE_INTERVAL: DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds,
+    CONF_ENABLE_PROXY: DEFAULT_ENABLE_PROXY,
+    CONF_PROXY_SERVER: DEFAULT_PROXY_SERVER,
+    CONF_ENABLE_ENCRYPT_LOG: DEFAULT_ENABLE_ENCRYPT_LOG,
+    CONF_UNAVAILABLE_AFTER_RETRIES: DEFAULT_UNAVAILABLE_AFTER_RETRIES,
+}
+
 def entity_data_process(data):
     if data['options'].get(CONF_ENABLE_ENCRYPT_LOG, True):
         encypt_data = list()
@@ -148,6 +165,18 @@ def entity_data_process(data):
         return encypt_data
     else:
         return data
+    
+def global_config(hass: HomeAssistant, entry: ConfigEntry):
+    token = Token(entry.data.copy())
+    update_manager = UpdateManager(hass, entry)
+    store_manager = StoreManager(hass, entry)
+    config = {
+        SL_DEVICES: list(),
+        CONF_TOKEN: token,
+        CONF_UPDATE_MANAGER: update_manager,
+        CONF_STORE_MANAGER: store_manager,
+    }
+    return config, token, update_manager, store_manager
             
 
 async def async_setup(hass: HomeAssistant, config: dict):
@@ -178,37 +207,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.debug(entity_data_process(entry.as_dict()))
     ha_version = MAJOR_VERSION * 100 + MINOR_VERSION
     local = entry.data[CONF_USER_INPUT].get(CONF_IP_ADDRESS) is not None
-    options = {
-        CONF_REMOTE_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.remote.seconds,
-        CONF_LOCAL_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL.local.seconds,
-        CONF_POWER_CONSUMES_UPDATE_INTERVAL: DEFAULT_POWER_CONSUMES_UPDATE_INTERVAL.interval.seconds,
-        CONF_CONFIG_UPDATE_INTERVAL: DEFAULT_CONFIG_UPDATE_INTERVAL.interval.seconds,
-        CONF_TOKEN_UPDATE_INTERVAL: DEFAULT_TOKEN_UPDATE_INTERVAL.interval.seconds,
-        CONF_ENABLE_DEVICES_UPDATE: DEFAULT_ENABLE_DEVICES_UPDATE,
-        CONF_DEVICES_UPDATE_INTERVAL: DEFAULT_DEVICES_UPDATE_INTERVAL.interval.seconds,
-        CONF_ENABLE_DNS_INJECTOR: DEFAULT_ENABLE_DNS_INJECTOR,
-        CONF_DNS_SERVER: DEFAULT_DNS_SERVER,
-        CONF_DNS_UPDATE_INTERVAL: DEFAULT_DNS_UPDATE_INTERVAL.interval.seconds,
-        CONF_ENABLE_PROXY: DEFAULT_ENABLE_PROXY,
-        CONF_PROXY_SERVER: DEFAULT_PROXY_SERVER,
-        CONF_ENABLE_ENCRYPT_LOG: DEFAULT_ENABLE_ENCRYPT_LOG,
-        CONF_UNAVAILABLE_AFTER_RETRIES: DEFAULT_UNAVAILABLE_AFTER_RETRIES,
-    }
+    options = DEFAULT_OPTIONS.copy()
     # if entry.entry_id in hass.data[DOMAIN][CONF_RELOAD_FLAG]:
     #     await async_sunlogin_reload_entry(hass, entry)
     await async_check_local_mode_entry(hass, entry)
 
-    token = Token(entry.data.copy())
-    update_manager = UpdateManager(hass, entry)
-    store_manager = StoreManager(hass, entry)
-    config = {
-        SL_DEVICES: list(),
-        CONF_TOKEN: token,
-        CONF_UPDATE_MANAGER: update_manager,
-        CONF_STORE_MANAGER: store_manager,
-    }
+    config, token, update_manager, store_manager = global_config(hass, entry)
     hass.data[DOMAIN][CONFIG][entry.entry_id] = config
-    # hass.data[DOMAIN][CONF_SCAN_INTERVAL] = entry.data[CONF_USER_INPUT][CONF_SCAN_INTERVAL]
 
     for dev_id, device_config in entry.data[CONF_DEVICES].items():
         device = get_sunlogin_device(hass, device_config)
@@ -229,8 +234,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         options[CONF_ENABLE_DEVICES_UPDATE] = False
         options[CONF_ENABLE_DNS_INJECTOR] = False
     options.update(entry.options)
-    if options[CONF_DNS_SERVER] == "114.114.114.114":
-        options[CONF_DNS_SERVER] = DEFAULT_DNS_SERVER
     if options.get(CONF_OPTIONS_VERSION, 100) < 305:
         options[CONF_TOKEN_UPDATE_INTERVAL] = 300
         options[CONF_OPTIONS_VERSION] = 305

@@ -13,10 +13,8 @@ import io
 import async_timeout
 import aiohttp
 from .sunlogin_api import CloudAPI, CloudAPI_V2, PlugAPI_V1, PlugAPI_V2_FAST
-# from .fake_data import GET_PLUG_ELECTRIC_FAKE_DATA_P8, GET_PLUG_STATUS_FAKE_DATA_P8
 from .dns_api import DNS
 from .updater import *
-# from .sunlogin_api import PlugAPI_V2 as PlugAPI
 from datetime import timedelta, datetime, timezone
 
 from abc import ABC, abstractmethod
@@ -1621,9 +1619,11 @@ class Token():
     def config(self, config):
         if config is None or not config:
             return
-        self._config = config
+        self._config = config.copy()
         self._create_time = config.get(CONF_REFRESH_EXPIRE, time.time()+30*24*3600) - 30*24*3600
         self._token_expire = self.token_decode().get('exp', 0)
+        if config.get(CONF_REFRESH_EXPIRE) is None:
+            self._config[CONF_REFRESH_EXPIRE] = self._create_time + 30*24*3600
 
     @property
     def access_token(self):
@@ -1679,26 +1679,24 @@ class Token():
                     entry.async_start_reauth(hass)
                     return
                 
-                r_json = resp.json()
-                self.config = r_json
-                store_manager = get_store_manager(hass)
-                store_manager.update_token(self.config)
-                _LOGGER.debug('Refresh token by password success')
-                return
             else:
                 entry.async_start_reauth(hass)
                 return
         
-        error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
-        if error == 'lt/new_device_alert':
-            if await async_login_new_client(hass, self.access_token):
-                error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
-        elif error is not None:
-            _LOGGER.debug('Refresh token fail')
-            _LOGGER.error(error)
-            return
+        else:
+            error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
+            if error == 'lt/new_device_alert':
+                if await async_login_new_client(hass, self.access_token):
+                    error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
+            elif error is not None:
+                _LOGGER.debug('Refresh token fail')
+                _LOGGER.error(error)
+                return
         
         r_json = resp.json()
+        if r_json.get('access_token') == self.access_token:
+            _LOGGER.debug('Access_token is not changed')
+            return
         self.config = r_json
         # _LOGGER.debug(r_json)
         store_manager = get_store_manager(hass)
