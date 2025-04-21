@@ -234,9 +234,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         options[CONF_ENABLE_DEVICES_UPDATE] = False
         options[CONF_ENABLE_DNS_INJECTOR] = False
     options.update(entry.options)
-    if options.get(CONF_OPTIONS_VERSION, 100) < 305:
-        options[CONF_TOKEN_UPDATE_INTERVAL] = 300
-        options[CONF_OPTIONS_VERSION] = 305
+    OPTIONS_VERSION = 306
+    if options.get(CONF_OPTIONS_VERSION, 100) < OPTIONS_VERSION:
+        options[CONF_TOKEN_UPDATE_INTERVAL] = 299
+        options[CONF_OPTIONS_VERSION] = OPTIONS_VERSION
     config_options(hass, entry, options)
     hass.config_entries.async_update_entry(entry, options=options)
     if not local:
