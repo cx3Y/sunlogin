@@ -16,7 +16,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-MIN_REMOTE_INTERVAL = 60
+MIN_REMOTE_INTERVAL = 40
 MIN_LOCAL_INTERVAL = 10
 
 @dataclass
