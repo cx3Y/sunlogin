@@ -1671,7 +1671,7 @@ class Token():
             if (user_input := entry.data.get(CONF_USER_INPUT)) is not None and user_input.get(CONF_PASSWORD) is not None:
                 username = user_input.get(CONF_USERNAME)
                 password = user_input.get(CONF_PASSWORD)
-                error, resp = await async_request_error_process(self.api.async_login_by_password, username, password)
+                error, resp = await async_request_error_process(api.async_login_by_password, username, password)
 
                 if error is not None:
                     _LOGGER.debug('reauth by password fail')
