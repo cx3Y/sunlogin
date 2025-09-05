@@ -1619,7 +1619,7 @@ class Token():
     def config(self, config):
         if config is None or not config:
             return
-        self._config = config.copy()
+        self._config = {key: config[key] for key in [CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_REFRESH_EXPIRE] & config.keys()}
         self._create_time = config.get(CONF_REFRESH_EXPIRE, time.time()+30*24*3600) - 30*24*3600
         self._token_expire = self.token_decode().get('exp', 0)
         if config.get(CONF_REFRESH_EXPIRE) is None:
@@ -1664,8 +1664,25 @@ class Token():
     
     async def async_refresh_token(self, hass):
         api = CloudAPI(hass)
-
-        if not self.validate() or time.time() > self.refresh_expire:
+        reauth_flag = False
+        if not self.validate():
+            reauth_flag = True
+            _LOGGER.debug('invalid token')
+        
+        else:
+            error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
+            if error == 'lt/new_device_alert':
+                if await async_login_new_client(hass, self.access_token):
+                    error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
+            elif error == 'authorize/refreshing_fail':
+                reauth_flag = True
+                _LOGGER.debug('authorize/refreshing_fail {message}'.format(message=resp.json().get('message', 'no error reason')))
+            elif error is not None:
+                _LOGGER.debug('Refresh token fail')
+                _LOGGER.error(error)
+                return
+        
+        if reauth_flag:
             _LOGGER.debug('need reauth')
             entry = config_entries.current_entry.get()
             if (user_input := entry.data.get(CONF_USER_INPUT)) is not None and user_input.get(CONF_PASSWORD) is not None:
@@ -1680,19 +1697,10 @@ class Token():
                     return
                 
             else:
+                _LOGGER.debug('start reauth')
                 entry.async_start_reauth(hass)
                 return
-        
-        else:
-            error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
-            if error == 'lt/new_device_alert':
-                if await async_login_new_client(hass, self.access_token):
-                    error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
-            elif error is not None:
-                _LOGGER.debug('Refresh token fail')
-                _LOGGER.error(error)
-                return
-        
+            
         r_json = resp.json()
         if r_json.get('access_token') == self.access_token:
             _LOGGER.debug('Access_token is not changed')
