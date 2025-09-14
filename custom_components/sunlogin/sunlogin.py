@@ -1042,6 +1042,8 @@ class SunloginPlug(SunLoginDevice, ABC):
         entities = get_entities('electricity')
         for dp_id in entities:
             entity = self._entities.get(dp_id)
+            if entity is None:
+                continue
             last_state = await entity.async_get_last_state()
             if last_state is not None and isinstance(last_state.state, (int, float)):
                 self._status.update({dp_id: last_state.state})
