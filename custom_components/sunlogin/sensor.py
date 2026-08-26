@@ -20,7 +20,7 @@ from homeassistant.const import (
 import async_timeout
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, CONFIG, SL_DEVICES
+from .const import DOMAIN, CONFIG, SL_DEVICES, normalize_id_part
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -688,7 +688,7 @@ class DeviceSensor(SensorEntity, RestoreEntity):
         self.device = device
         self.dp_id = sensorid
         self.entity_description = description
-        self.entity_id = f"{ENTITY_DOMAIN}.{self.device.model}_{self.device.sn}_{self.dp_id}"
+        self.entity_id = f"{ENTITY_DOMAIN}.{normalize_id_part(self.device.model)}_{self.device.sn}_{self.dp_id}"
 
         _LOGGER.debug("Initialized sensor [%s]", self.entity_id)
 

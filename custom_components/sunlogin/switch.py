@@ -10,7 +10,7 @@ from homeassistant.components.switch import (
 from homeassistant.const import CONF_DEVICES, CONF_PLATFORM
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, CONFIG, SL_DEVICES
+from .const import DOMAIN, CONFIG, SL_DEVICES, normalize_id_part
 
 _LOGGER = logging.getLogger(__name__)
 SWITCH_TYPES = {
@@ -123,7 +123,7 @@ class DeviceSwitch(SwitchEntity, RestoreEntity):
         self.device = device
         self.dp_id = switchid
         self.entity_description = description
-        self.entity_id = f"{ENTITY_DOMAIN}.{self.device.model}_{self.device.sn}_{self.dp_id}"
+        self.entity_id = f"{ENTITY_DOMAIN}.{normalize_id_part(self.device.model)}_{self.device.sn}_{self.dp_id}"
 
         if (remark := device.memos.get(switchid)) is not None:
             self._attr_name = remark
