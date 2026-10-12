@@ -569,7 +569,6 @@ def plug_electric_process(data):
         status[DP_VOLTAGE] = voltage
 
     if (current := data.get('curr')) is not None:
-        current = current // 1000
         status[DP_CURRENT] = current
 
     if (power := data.get('power')) is not None:
@@ -579,7 +578,6 @@ def plug_electric_process(data):
     if (sub_electric := data.get('sub')) is not None and isinstance(sub_electric, list):
         for index, electric in enumerate(sub_electric):
             sub_current = electric['cur']
-            sub_current = sub_current // 1000
             sub_power = electric['pwr']
             sub_power = sub_power / 1000
             status[f"sub_current{index}"] = sub_current
@@ -1137,7 +1135,7 @@ class SunloginPlug(SunLoginDevice, ABC):
 
     async def async_power_consumes_update(self):
         try:
-            resp = await self.api.async_get_power_consumes(self.sn)
+            resp = await self.api.async_get_power_consumes(self.sn, access_token=self.token.access_token)
             r_json = resp.json()
             self._status.update(plug_power_consumes_process(r_json))
             self.power_consumes_fail_count = 0
@@ -1556,7 +1554,7 @@ class P8(SunloginPlug):
     async def async_power_consumes_update(self):
         for index in range(8+1):
             try:
-                resp = await self.api.async_get_power_consumes(self.sn, index=index)
+                resp = await self.api.async_get_power_consumes(self.sn, index=index, access_token=self.token.access_token)
                 r_json = resp.json()
                 self._status.update(plug_power_consumes_process(r_json, index=index))
             except: 

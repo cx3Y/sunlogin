@@ -395,10 +395,13 @@ class PlugAPI_V1(HTTPRequest):
         #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
         pass
 
-    async def async_get_power_consumes(self, sn, index=0):
+    async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
-        resp = await self.async_make_request_by_requests("GET", url)
+        _pc_kwargs = {}
+        if access_token:
+            _pc_kwargs['auth'] = SunloginAuth(access_token)
+        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
         return resp
     
 
@@ -503,10 +506,13 @@ class PlugAPI_V2(HTTPRequest):
         #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
         pass
 
-    async def async_get_power_consumes(self, sn, index=0):
+    async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
-        resp = await self.async_make_request_by_requests("GET", url)
+        _pc_kwargs = {}
+        if access_token:
+            _pc_kwargs['auth'] = SunloginAuth(access_token)
+        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
         return resp
     
 
@@ -628,10 +634,13 @@ class PlugAPI_V2_FAST(HTTPRequest):
         #%7B%22time%22%3A2023%2C%22repeat%22%3A0%2C%22enable%22%3A1%2C%22action%22%3A0%7D
         pass
 
-    async def async_get_power_consumes(self, sn, index=0):
+    async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
         
-        resp = await self.async_make_request_by_requests("GET", url)
+        _pc_kwargs = {}
+        if access_token:
+            _pc_kwargs['auth'] = SunloginAuth(access_token)
+        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
         return resp
     
 
