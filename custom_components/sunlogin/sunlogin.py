@@ -1137,7 +1137,7 @@ class SunloginPlug(SunLoginDevice, ABC):
 
     async def async_power_consumes_update(self):
         try:
-            resp = await self.api.async_get_power_consumes(self.sn)
+            resp = await self.api.async_get_power_consumes(self.sn, access_token=self.token.access_token)
             r_json = resp.json()
             self._status.update(plug_power_consumes_process(r_json))
             self.power_consumes_fail_count = 0
@@ -1556,7 +1556,7 @@ class P8(SunloginPlug):
     async def async_power_consumes_update(self):
         for index in range(8+1):
             try:
-                resp = await self.api.async_get_power_consumes(self.sn, index=index)
+                resp = await self.api.async_get_power_consumes(self.sn, index=index, access_token=self.token.access_token)
                 r_json = resp.json()
                 self._status.update(plug_power_consumes_process(r_json, index=index))
             except: 
