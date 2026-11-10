@@ -4,10 +4,8 @@ import requests
 import json
 import functools
 import hashlib
-import uuid
 import time
 import logging
-import textwrap
 from abc import ABC
 from requests.auth import AuthBase
 from requests.adapters import HTTPAdapter
@@ -16,13 +14,19 @@ from .const import PLUG_DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 APP_ID = 'kNUC97u86Zr7mt9xeZVl'
-TERMINAL_NAME = 'iPhone15Plus'
+# terminal_name shown in the "login devices" list; matches the android UA
+TERMINAL_NAME = 'Android Device'
 PASSWORD = 'password'
 SMS = 'securecode'
 SN = 'sn'
-USER_AGENT = 'SLCC/15.3.4 (IOS,appname=sunloginControlClient)'
+# Mirrors the official flutter client (user_agent_utils.dart):
+#   SLRC/{version} ({platform},appname=sunloginRemoteClient,handcake)
+# Version is kept in sync with the flutter app (pubspec 16.8.0+34767).
+# The backend parses this UA (util/ua/useragent.go) and bans exact
+# versions (login-terminal disabledLoginVersion); it can be overridden
+# at runtime via change_user_agent / the user_agent option.
+DEFAULT_USER_AGENT = 'SLRC/16.8.0.34767 (android,appname=sunloginRemoteClient,handcake)'
 CLIENT_ID = '8ae73501-7def-5b19-b57d-52d15ae1e40b'
-DEVICE_ID = '59db6b6abd82d8-a6ab17d7865e38c-7bdd362b-a3f44e-909e6a652509d1'
 HTTPS_SUFFIX = 'https://'
 HTTP_SUFFIX = 'http://'
 BASE_URL = HTTPS_SUFFIX + 'api-std.sunlogin.oray.com'
@@ -42,22 +46,41 @@ QRCODE_APPLY_URL = BASE_URL_V2 + QRCODE_APPLY
 QRCODE_STATUS_URL = BASE_URL_V2 + QRCODE_STATUS
 AUTH_CODE_URL = BASE_URL + AUTH_CODE
 LOGIN_TERMINALS_URL = BASE_URL + LOGIN_TERMINALS
+LOGIN_TERMINALS_SENDCODE_URL = BASE_URL + LOGIN_TERMINALS + '/sendcode'
+LOGIN_TERMINALS_CHECKCODE_URL = BASE_URL + LOGIN_TERMINALS + '/checkcode'
 REFRESH_URL_V2 = BASE_URL_V2 + AUTH_SESSION
 HEAD_AUTH = 'Authorization'
+HEAD_CLIENT_ID = 'EX-ClientId'
+HEAD_KAL_CLIENT_ID = 'KAL-ClientID'
 AUTH_SUFFIX = 'Bearer'
 CLIENT_SALT = '==SunLogin@2023=='
 LANGUAGE = 'zh-Hans_US'
-REAL_DEVICE_MAC = ':'.join(textwrap.wrap("{:012X}".format(uuid.getnode()), 2))
-FAKE_HOST = '.'.join([str(uuid.getnode()), CLIENT_SALT, 'xyz'])
-FAKE_CLIENT_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, FAKE_HOST))
-HEADERS = {
-    'User-Agent': USER_AGENT,
-    'X-AppID': APP_ID,
-    'Accept': '*/*',
-    'Country-Region': LANGUAGE,
-    'Accept-Language': LANGUAGE,
-    'EX-ClientId': FAKE_CLIENT_ID,
-}
+
+# Module-level default User-Agent. It can be overridden at runtime
+# (see change_user_agent) so that a version banned server-side
+# (login-terminal disabledLoginVersion) can be replaced without a code release.
+USER_AGENT = DEFAULT_USER_AGENT
+
+VERIFY_METHOD_MOBILE = 'mobile'
+VERIFY_METHOD_EMAIL = 'email'
+
+
+def change_user_agent(user_agent):
+    global USER_AGENT
+    if user_agent:
+        USER_AGENT = user_agent
+        _LOGGER.debug("User-Agent changed to %s", user_agent)
+
+
+def base_headers():
+    """Build the standard headers for cloud api requests."""
+    return {
+        'User-Agent': USER_AGENT,
+        'X-AppID': APP_ID,
+        'Accept': '*/*',
+        'Country-Region': LANGUAGE,
+        'Accept-Language': LANGUAGE,
+    }
 
 ACTION = "action"
 ADDR = "addr"
@@ -88,18 +111,6 @@ API_UPGRADE = "plug_upgrade"
 API_UPGRADE_STATUS = "plug_upgrade_status"
 
 
-def change_cliend_id_by_seed(seed):
-    #seed userid
-    global FAKE_HOST, FAKE_CLIENT_ID
-    FAKE_HOST = '.'.join([str(seed), CLIENT_SALT, 'xyz'])
-    FAKE_CLIENT_ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, FAKE_HOST))
-    HEADERS['EX-ClientId'] = FAKE_CLIENT_ID
-
-def change_cliend_id(client_id):
-    global FAKE_CLIENT_ID
-    FAKE_CLIENT_ID = client_id
-    HEADERS['EX-ClientId'] = FAKE_CLIENT_ID
-
 def calc_key_with_time(sn):
     seed = time.strftime('%m%d%H%M')
     raw = sn + PLUGIN_SCHEMA + seed
@@ -127,7 +138,9 @@ class SunloginAuth(AuthBase):
 class HTTPRequest(ABC):
     hass = None
     session = None
-    timeout = None
+    # requests timeout=None means "wait forever" and can hang the config
+    # flow / refresh tasks for minutes; default to a sane bound.
+    timeout = 30
     _verify = dict()
     _proxies = dict()
 
@@ -197,12 +210,15 @@ class HTTPRequest(ABC):
                 proxies=self.proxies,
                 **kwargs
             )
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
 
         resp = await self.hass.async_add_executor_job(func)
         return resp
 
-    def make_request_by_requests(self, method, url, data=None, headers={}):
-        # session = self.session
+    def make_request_by_requests(self, method, url, data=None, headers=None):
+        if headers is None:
+            headers = {}
         if method == "GET":
             func = functools.partial(
                 self.session.get, url, headers=headers, params=data
@@ -221,25 +237,42 @@ class HTTPRequest(ABC):
                 headers=headers,
                 data=json.dumps(data),
             )
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
 
         resp = func()
         return resp
 
 
 class CloudAPI(HTTPRequest):
-    def __init__(self, hass):
+    def __init__(self, hass, client_id=None):
         self.hass = hass
+        self.client_id = client_id
         self.session = requests.Session()
+
+    @property
+    def headers(self):
+        """Standard headers with the persisted client id (when set).
+
+        Mirrors the official client _createHeaders(): both KAL-ClientID
+        and ex-clientid are sent.
+        """
+        headers = base_headers()
+        if self.client_id:
+            headers[HEAD_KAL_CLIENT_ID] = self.client_id
+            headers[HEAD_CLIENT_ID] = self.client_id
+        return headers
 
     async def async_login_by_password(self, username, password):
         data = {
             "loginname" : username,
+            "account" : username,
             "terminal_name" : TERMINAL_NAME,
             "type" : PASSWORD,
             "ismd5" : True,
             "password" : hashlib.md5(password.encode()).hexdigest(),
         }
-        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=HEADERS)
+        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=self.headers)
 
         #error
         return resp
@@ -247,39 +280,69 @@ class CloudAPI(HTTPRequest):
     async def async_login_by_sms(self, username, smscode):
         data = {
             "loginname" : username,
+            "account" : username,
             "terminal_name" : TERMINAL_NAME,
             "type" : SMS,
             "medium" : "sms",
             "code" : smscode,
         }
 
-        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=HEADERS)
+        resp = await self.async_make_request_by_requests("POST", LOGIN_URL, data=data, headers=self.headers)
         return resp
-    
-    async def async_refresh_token(self, access_token, refresh_token):
-        data = {"refresh_token": refresh_token}
 
-        resp = await self.async_make_request_by_requests("POST", REFRESH_URL_V1, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
+    async def async_refresh_token(self, access_token, refresh_token):
+        data = {"access_token": access_token, "refresh_token": refresh_token}
+
+        resp = await self.async_make_request_by_requests("POST", REFRESH_URL_V1, data=data, headers=self.headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_auth_code(self):
-        resp = await self.async_make_request_by_requests("GET", AUTH_CODE_URL, headers=HEADERS)
+        resp = await self.async_make_request_by_requests("GET", AUTH_CODE_URL, headers=self.headers)
         return resp
-    
+
     async def async_grant_auth_code(self, access_token, code):
         data = {"action": "grant", "code": code}
 
-        resp = await self.async_make_request_by_requests("POST", AUTH_CODE_URL, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
+        resp = await self.async_make_request_by_requests("POST", AUTH_CODE_URL, data=data, headers=self.headers, auth=SunloginAuth(access_token))
         return resp
-    
+
     async def async_login_terminals_by_code(self, access_token, code, mac="", code_origin='qrcode'):
         data = {"code": code, "mac": mac, "terminal_name": TERMINAL_NAME, "type": code_origin}
 
-        resp = await self.async_make_request_by_requests("POST", LOGIN_TERMINALS_URL, data=data, headers=HEADERS, auth=SunloginAuth(access_token))
+        resp = await self.async_make_request_by_requests("POST", LOGIN_TERMINALS_URL, data=data, headers=self.headers, auth=SunloginAuth(access_token))
         return resp
 
     async def async_get_devices_list(self, access_token):
-        resp = await self.async_make_request_by_requests("GET", DEVICES_URL, headers=HEADERS, auth=SunloginAuth(access_token))
+        resp = await self.async_make_request_by_requests("GET", DEVICES_URL, headers=self.headers, auth=SunloginAuth(access_token))
+        return resp
+
+    async def async_send_verify_code(self, account, method):
+        """Send a verify code for new-device login (POST /login-terminals/sendcode).
+
+        method: VERIFY_METHOD_MOBILE or VERIFY_METHOD_EMAIL.
+        """
+        data = {"account": account, "method": method}
+        resp = await self.async_make_request_by_requests(
+            "POST", LOGIN_TERMINALS_SENDCODE_URL, data=data, headers=self.headers
+        )
+        return resp
+
+    async def async_check_verify_code(self, account, method, code, terminal_name=TERMINAL_NAME):
+        """Check the verify code for new-device login (PUT /login-terminals/checkcode).
+
+        On success the response body directly contains the token info
+        (access_token / refresh_token), same shape as /authorization.
+        """
+        data = {
+            "account": account,
+            "method": method,
+            "code": code,
+            "memo": "",
+            "terminal_name": terminal_name,
+        }
+        resp = await self.async_make_request_by_requests(
+            "PUT", LOGIN_TERMINALS_CHECKCODE_URL, data=data, headers=self.headers
+        )
         return resp
 
 
@@ -306,7 +369,8 @@ class CloudAPI_V2(HTTPRequest):
         return resp
     
     async def async_refresh_token(self, s_id):
-        resp = await self.async_make_request_by_requests("GET", REFRESH_URL_V2, data={"_t": int(time.time()*1000), "key": key})
+        data = {"_t": int(time.time()*1000), "key": s_id}
+        resp = await self.async_make_request_by_requests("GET", REFRESH_URL_V2, data=data)
 
         return resp
     

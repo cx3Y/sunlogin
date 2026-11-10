@@ -69,6 +69,7 @@ from .const import (
     CONF_ACCESS_TOKEN,
     CONF_REFRESH_TOKEN,
     CONF_REFRESH_EXPIRE,
+    CONF_REFRESH_TTL,
     CONF_UPDATE_MANAGER,
     CONF_STORE_MANAGER,
     CONF_REMOTE_UPDATE_INTERVAL,
@@ -85,6 +86,7 @@ from .const import (
     CONF_PROXY_SERVER,
     CONF_ENABLE_ENCRYPT_LOG,
     CONF_UNAVAILABLE_AFTER_RETRIES,
+    CONF_USER_AGENT,
     CONF_USER_INPUT,
     DEFAULT_UNAVAILABLE_AFTER_RETRIES,
     DEFAULT_ENABLE_DNS_INJECTOR,
@@ -271,23 +273,36 @@ async def async_request_error_process(func, *args):
     resp = None
     try:
         resp = await func(*args)
-    except requests.exceptions.ConnectionError:
-        error = "Request failed, status ConnectionError"
+    except requests.exceptions.RequestException as e:
+        error = f"Request failed, {e.__class__.__name__}"
+        return error, resp
+    except (asyncio.TimeoutError, TimeoutError):
+        error = "Request timeout"
         return error, resp
     
     if not resp.ok:
         try: 
             r_json = resp.json()
-        except: 
-            error = "Response can't cover to JSON"
+        except (ValueError, json.JSONDecodeError): 
+            error = "Response can't convert to JSON"
             return error, resp
         error = r_json.get('error', 'unkown')
         return error, resp
     
+    # 2xx but not 200: the cloud api signals special states (e.g. HTTP 202
+    # with {"error": "lt/new_device_alert"} for new-device verification)
+    if resp.status_code != 200:
+        try:
+            r_json = resp.json()
+        except (ValueError, json.JSONDecodeError):
+            return error, resp
+        if r_json.get('error'):
+            return r_json['error'], resp
+    
     return error, resp
 
-async def async_login_new_client(hass, access_token):
-    api = CloudAPI(hass)
+async def async_login_new_client(hass, access_token, client_id=None):
+    api = CloudAPI(hass, client_id)
     error, resp = await async_request_error_process(api.async_get_auth_code)
     if error is not None:
         _LOGGER.error("login_new_client failed, error: %s", error)
@@ -307,21 +322,26 @@ async def async_login_new_client(hass, access_token):
     
     return True
 
-async def aysnc_dns_update(hass):
+async def async_dns_update(hass):
     dns = DNS(hass, 'ip33')
     if dns.cache.get(PLUG_DOMAIN) is None:
         dns.set_domain(PLUG_DOMAIN)
-    await dns.async_update()
+    try:
+        await dns.async_update()
+    except Exception as e:
+        _LOGGER.warning("DNS update failed: %s", e)
+        return
     ip = dns.get_ip(PLUG_DOMAIN)
     if ip is not None:
         api = PlugAPI_V2_FAST(hass, PLUG_URL)
         api._process_address[PLUG_URL] = PLUG_URL.replace(PLUG_DOMAIN, ip)
-        # api.process_cert()
         _LOGGER.debug(f"DNS update success, {PLUG_DOMAIN}: {ip}")
+    else:
+        _LOGGER.warning("DNS update got no ip for %s", PLUG_DOMAIN)
 
 async def async_devices_update(hass):
     token = get_token(hass)
-    api = CloudAPI(hass)
+    api = CloudAPI(hass, token.client_id)
     error, resp = await async_request_error_process(api.async_get_devices_list, token.access_token)
 
     if error is not None:
@@ -340,10 +360,14 @@ async def async_guess_model(hass, ip):
     local_address = HTTP_SUFFIX + ip + LOCAL_PORT
     plug_api = PlugAPI_V1(hass, local_address)
 
-    resp_sn = await plug_api.async_get_sn()
-    sn_json = resp_sn.json()
-    sn = sn_json[CONF_DEVICE_SN]
-    device_type = sn_json.get('type')
+    try:
+        resp_sn = await plug_api.async_get_sn()
+        sn_json = resp_sn.json()
+        sn = sn_json.get(CONF_DEVICE_SN)
+        device_type = sn_json.get('type')
+    except Exception as e:
+        _LOGGER.warning("async_guess_model: get sn from %s failed: %s", local_address, e)
+        return None, None
 
     if device_type == 'e':
         model = 'C1-2'
@@ -364,17 +388,21 @@ async def async_guess_model(hass, ip):
     elif device_type == 'P8':
         model = 'P8'
     else:
+        check_electric = None
+        check_slot = None
         try:
             resp_electric = await plug_api.async_get_electric(sn)
-            check_electric = resp_electric.json()['result']
-        except: pass
+            check_electric = resp_electric.json().get('result')
+        except Exception as e:
+            _LOGGER.debug("async_guess_model: get electric failed: %s", e)
 
         try:
             resp_state = await plug_api.async_get_status(sn)
-            check_slot = len(resp_state.json()['response'])
-        except: pass
+            check_slot = len(resp_state.json().get('response', []))
+        except Exception as e:
+            _LOGGER.debug("async_guess_model: get status failed: %s", e)
 
-        if check_electric == 0: #support electric
+        if check_electric == 0 and check_slot is not None: #support electric
             if check_slot == 1:
                 model = 'C2'
             elif check_slot == 3:
@@ -383,12 +411,12 @@ async def async_guess_model(hass, ip):
                 model = 'P1Pro'
             elif check_slot == 8:
                 model = 'P8Pro'
-        else:
+        elif check_slot is not None:
             if check_slot == 1:
                 model = 'C1Pro'
             elif check_slot == 3:
                 model = 'P2'
-    
+
     return sn, model
 
 def get_entities(tag):
@@ -512,6 +540,9 @@ def get_entities(tag):
 
 def get_sunlogin_device(hass, config):
     model = config.get(CONF_DEVICE_MODEL)
+    if model is None:
+        _LOGGER.error("Device config without model, skip: %s", config.get(CONF_DEVICE_SN))
+        return None
     if 'C2' in model or 'C1-2' == model:
         return C2(hass, config)
     elif 'C1' in model:
@@ -525,7 +556,8 @@ def get_sunlogin_device(hass, config):
     elif 'P8' in model:
         return P8(hass, config)
     else:
-        pass
+        _LOGGER.warning("Unknown device model: %s", model)
+        return None
 
 def get_plug_memos(config):
     memos = dict()
@@ -569,17 +601,18 @@ def plug_electric_process(data):
         status[DP_VOLTAGE] = voltage
 
     if (current := data.get('curr')) is not None:
-        status[DP_CURRENT] = current
+        # Official protocol (smartplug-api.md): curr is in uA, convert to mA
+        # (the official client does the same: (curr + 500) ~/ 1000)
+        status[DP_CURRENT] = current / 1000
 
     if (power := data.get('power')) is not None:
-        power = power / 1000
+        power = power / 1000  # mW -> W
         status[DP_POWER] = power
 
     if (sub_electric := data.get('sub')) is not None and isinstance(sub_electric, list):
         for index, electric in enumerate(sub_electric):
-            sub_current = electric['cur']
-            sub_power = electric['pwr']
-            sub_power = sub_power / 1000
+            sub_current = electric['cur'] / 1000  # uA -> mA
+            sub_power = electric['pwr'] / 1000  # mW -> W
             status[f"sub_current{index}"] = sub_current
             status[f"sub_power{index}"] = sub_power
 
@@ -727,8 +760,8 @@ def config_options(hass, entry, diff):
     if diff.get(CONF_ENABLE_DNS_INJECTOR) is None:
         pass
     elif (dns_enable := diff.get(CONF_ENABLE_DNS_INJECTOR)):
-        _aysnc_dns_update = functools.partial(aysnc_dns_update, hass)
-        update_manager.add_task('dns_update', _aysnc_dns_update, DEFAULT_DNS_UPDATE_INTERVAL)
+        _async_dns_update = functools.partial(async_dns_update, hass)
+        update_manager.add_task('dns_update', _async_dns_update, DEFAULT_DNS_UPDATE_INTERVAL)
         data[CONF_ENABLE_DNS_INJECTOR] = dns_enable
     else:
         update_manager.del_task('dns_update')
@@ -763,26 +796,40 @@ def config_options(hass, entry, diff):
 
     if (retry_times := diff.get(CONF_UNAVAILABLE_AFTER_RETRIES)) is not None and retry_times >= 0:
         data[CONF_UNAVAILABLE_AFTER_RETRIES] = retry_times
-    
+
+    if (user_agent := diff.get(CONF_USER_AGENT)) is not None:
+        from .sunlogin_api import change_user_agent
+        change_user_agent(user_agent.strip() if isinstance(user_agent, str) else None)
+        data[CONF_USER_AGENT] = user_agent
+
     return data
     
 
 class SunLogin:
-    def __init__(self, hass):
+    NEW_DEVICE_ALERT = 'lt/new_device_alert'
+
+    def __init__(self, hass, client_id=None):
         """Initialize the class."""
         self.hass = hass
         self.userid = None
+        self.client_id = client_id
+        # Populated when the cloud answers 202 lt/new_device_alert:
+        # {"mobile": "<masked>", "email": "<masked>"}
+        self.new_device_alert = None
         self.token = Token()
-        self._api_v1 = CloudAPI(hass)
+        self._api_v1 = CloudAPI(hass, client_id)
         self._api_v2 = CloudAPI_V2(hass)
         self.device_list = dict()
 
     async def async_get_access_token_by_password(self, username, password):
+        self.new_device_alert = None
         error, resp = await async_request_error_process(self._api_v1.async_login_by_password, username, password)
 
         if error is not None:
+            if error == self.NEW_DEVICE_ALERT:
+                self.new_device_alert = self._extract_new_device_alert(resp)
             return error
-        
+
         r_json = resp.json()
         self.token.config = r_json
         self.userid = self.token.token_decode().get('uid')
@@ -790,29 +837,67 @@ class SunLogin:
         return "ok"
 
     async def async_get_access_token_by_sms(self, username, smscode):
-
+        self.new_device_alert = None
         error, resp = await async_request_error_process(self._api_v1.async_login_by_sms, username, smscode)
 
         if error is not None:
+            if error == self.NEW_DEVICE_ALERT:
+                self.new_device_alert = self._extract_new_device_alert(resp)
             return error
-        
+
         r_json = resp.json()
         self.token.config = r_json
         self.userid = self.token.token_decode().get('uid')
 
         return "ok"
-    
+
     async def async_get_access_token_by_qrcode(self, secret):
         error, resp = await async_request_error_process(self._api_v2.async_login_by_qrcode, secret)
 
         if error is not None:
             return error
-        
+
         r_json = resp.json()
         self.token.config = r_json
         self.userid = r_json.get('userid')
 
-        return "ok"    
+        return "ok"
+
+    async def async_new_device_send_code(self, account, method):
+        """New-device login: send a verify code via sms or email."""
+        error, resp = await async_request_error_process(
+            self._api_v1.async_send_verify_code, account, method
+        )
+        if error is not None:
+            _LOGGER.error("new device send_code (%s) failed: %s", method, error)
+            return error
+        return "ok"
+
+    async def async_new_device_check_code(self, account, method, code):
+        """New-device login: check the verify code; on success stores the token."""
+        error, resp = await async_request_error_process(
+            self._api_v1.async_check_verify_code, account, method, code
+        )
+        if error is not None:
+            _LOGGER.error("new device check_code (%s) failed: %s", method, error)
+            return error
+
+        r_json = resp.json()
+        self.token.config = r_json
+        self.userid = self.token.token_decode().get('uid')
+        return "ok"
+
+    @staticmethod
+    def _extract_new_device_alert(resp):
+        """Extract masked mobile/email from a 202 new_device_alert response."""
+        try:
+            r_json = resp.json()
+        except (ValueError, json.JSONDecodeError):
+            return {}
+        return {
+            "mobile": r_json.get('mobile', ''),
+            "email": r_json.get('email', ''),
+        }
 
     async def async_get_devices_list(self):
         error, resp = await async_request_error_process(self._api_v1.async_get_devices_list, self.token.access_token)
@@ -993,19 +1078,13 @@ class SunloginPlug(SunLoginDevice, ABC):
         if status is None:
             return
         elif status and self.remote_address is not None:
-            # self.api = PlugAPI(self.hass, self.remote_address)
             self.api.address = self.remote_address
             self._status.update({DP_REMOTE: status})
-            self.update_interval.interval = status
+            self.update_interval.interval = 1
         elif not status and self.local_address is not None:
-            # self.api = PlugAPI(self.hass, self.local_address)
             self.api.address = self.local_address
             self._status.update({DP_REMOTE: status})
-            self.update_interval.interval = status
-        
-        # entity = self.get_entity(f"sunlogin_{self.sn}_{DP_REMOTE}")
-        # _LOGGER.debug(entity)
-        # entity.async_write_ha_state()
+            self.update_interval.interval = 0
 
     def get_sersor_remark(self, dp_id):
         return None
@@ -1040,9 +1119,14 @@ class SunloginPlug(SunLoginDevice, ABC):
         entities = get_entities('electricity')
         for dp_id in entities:
             entity = self._entities.get(dp_id)
+            if entity is None:
+                continue
             last_state = await entity.async_get_last_state()
-            if last_state is not None and isinstance(last_state.state, (int, float)):
-                self._status.update({dp_id: last_state.state})
+            if last_state is not None:
+                try:
+                    self._status.update({dp_id: float(last_state.state)})
+                except (TypeError, ValueError):
+                    pass
 
     async def async_get_firmware_version(self) -> str | None:
         """Get firmware version."""
@@ -1078,17 +1162,19 @@ class SunloginPlug(SunLoginDevice, ABC):
             resp = await self.api.async_set_status(self.sn, index, status, self.token.access_token)
 
         r_json = resp.json()
-        if not r_json["result"]:
+        # result == 0 means success (same convention as local plug api)
+        if not r_json.get("result", 1):
             self._status.update({dp_id: status})
 
     async def async_set_scan_interval(self, seconds):
-        if self.status('remote') or self.status('remote') is None:
+        if self.status(DP_REMOTE) or self.status(DP_REMOTE) is None:
             seconds = max(seconds, 60)
         else:
             seconds = max(seconds, 10)
         scan_interval = timedelta(seconds=seconds)
-        self.coordinator.update_interval = scan_interval
-        self.coordinator.async_set_updated_data(data=self._status)
+        if self.update_manager is not None:
+            self.update_manager.coordinator.update_interval = scan_interval
+            self.update_manager.coordinator.async_set_updated_data(self._status)
         return seconds
 
     async def async_status_update(self):
@@ -1139,7 +1225,8 @@ class SunloginPlug(SunLoginDevice, ABC):
             r_json = resp.json()
             self._status.update(plug_power_consumes_process(r_json))
             self.power_consumes_fail_count = 0
-        except: 
+        except Exception as e:
+            _LOGGER.debug(f"{self.name} (async_get_power_consumes): {e}")
             if self.status(DP_REMOTE):
                 if self.power_consumes_fail_count >= get_max_retries(self.hass):
                     self._available = False
@@ -1153,8 +1240,8 @@ class SunloginPlug(SunLoginDevice, ABC):
             store_manager = get_store_manager(self.hass)
             store_manager.update_device_config(self.sn, {CONF_DEVICE_SN: self.sn})
             self.pop_update_flag(UPDATE_FLAG_SN)
-        except:
-            pass
+        except Exception as e:
+            _LOGGER.debug("%s async_update_sn failed: %s", self.name, e)
 
     async def async_update_ip(self):
         try:
@@ -1162,8 +1249,8 @@ class SunloginPlug(SunLoginDevice, ABC):
             store_manager = get_store_manager(self.hass)
             store_manager.update_device_config(self.sn, {CONF_DEVICE_IP_ADDRESS: self._ip})
             self.pop_update_flag(UPDATE_FLAG_IP)
-        except:
-            pass
+        except Exception as e:
+            _LOGGER.debug("%s async_update_ip failed: %s", self.name, e)
     
     async def async_update_fw_version(self):
         try:
@@ -1174,13 +1261,11 @@ class SunloginPlug(SunLoginDevice, ABC):
 
                 device_registry = dr.async_get(self.hass)
                 device_entry = device_registry.async_get_device(identifiers={(DOMAIN, self.sn)})
-                assert device_entry
-                device_registry.async_update_device(device_entry.id, sw_version=self.fw_version)
+                if device_entry is not None:
+                    device_registry.async_update_device(device_entry.id, sw_version=self.fw_version)
             self.pop_update_flag(UPDATE_FLAG_VERSION)
-        except: 
-            """"""
-            # if (version := self.config.get(CONF_DEVICE_VERSION)) is not None:
-            #     self.fw_version = version
+        except Exception as e:
+            _LOGGER.debug("%s async_update_fw_version failed: %s", self.name, e)
 
     @abstractmethod
     async def async_setup(self) -> bool:
@@ -1557,9 +1642,11 @@ class P8(SunloginPlug):
                 resp = await self.api.async_get_power_consumes(self.sn, index=index, access_token=self.token.access_token)
                 r_json = resp.json()
                 self._status.update(plug_power_consumes_process(r_json, index=index))
-            except: 
-                if self.device.status(DP_REMOTE):
+            except Exception as e:
+                _LOGGER.debug(f"{self.name} (async_get_power_consumes index={index}): {e}")
+                if self.status(DP_REMOTE) and self.power_consumes_fail_count >= get_max_retries(self.hass):
                     self._available = False
+                self.power_consumes_fail_count += 1
         
         self.write_ha_state()
     
@@ -1567,9 +1654,14 @@ class P8(SunloginPlug):
         entities = get_entities('p8_extra_electricity')
         for dp_id in entities:
             entity = self._entities.get(dp_id)
+            if entity is None:
+                continue
             last_state = await entity.async_get_last_state()
-            if last_state is not None and isinstance(last_state.state, (int, float)):
-                self._status.update({dp_id: last_state.state})
+            if last_state is not None:
+                try:
+                    self._status.update({dp_id: float(last_state.state)})
+                except (TypeError, ValueError):
+                    pass
 
     async def async_setup(self, update_manager) -> bool:
         """Set up the device and related entities."""
@@ -1602,9 +1694,12 @@ class Token():
     _config = None
     _create_time = 0
     _token_expire = 0
+    # refresh a bit before the access_token jwt exp (seconds)
+    TOKEN_REFRESH_AHEAD = 600
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, client_id=None):
         self.config = config
+        self.client_id = client_id
 
     @property
     def config(self):
@@ -1617,11 +1712,19 @@ class Token():
     def config(self, config):
         if config is None or not config:
             return
-        self._config = {key: config[key] for key in [CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_REFRESH_EXPIRE] & config.keys()}
-        self._create_time = config.get(CONF_REFRESH_EXPIRE, time.time()+30*24*3600) - 30*24*3600
-        self._token_expire = self.token_decode().get('exp', 0)
-        if config.get(CONF_REFRESH_EXPIRE) is None:
+        keys = [CONF_ACCESS_TOKEN, CONF_REFRESH_TOKEN, CONF_REFRESH_EXPIRE, CONF_REFRESH_TTL] & config.keys()
+        self._config = {key: config[key] for key in keys}
+        # the cloud answers with refresh_ttl (seconds); keep the absolute
+        # expiry derived from it, fall back to the historical 30 days
+        if config.get(CONF_REFRESH_TTL) is not None:
+            self._create_time = time.time()
+            self._config[CONF_REFRESH_EXPIRE] = self._create_time + int(config[CONF_REFRESH_TTL])
+        elif config.get(CONF_REFRESH_EXPIRE) is None:
+            self._create_time = time.time()
             self._config[CONF_REFRESH_EXPIRE] = self._create_time + 30*24*3600
+        else:
+            self._create_time = config[CONF_REFRESH_EXPIRE] - 30*24*3600
+        self._token_expire = self.token_decode().get('exp', 0)
 
     @property
     def access_token(self):
@@ -1637,18 +1740,31 @@ class Token():
 
     @property
     def refresh_expire(self):
-        refresh_expire = max(self._config.get(CONF_REFRESH_EXPIRE, 0), self.create_time+30*24*3600)
-        return refresh_expire - 60
+        return self._config.get(CONF_REFRESH_EXPIRE, 0) - 60
     
     @property
     def token_expire(self):
         return self._token_expire
 
+    @property
+    def needs_refresh(self):
+        """True when the access_token is invalid or close to its jwt exp.
+
+        The scheduler still runs on its interval; this flag lets it skip
+        the network round-trip while the token is still fresh.
+        """
+        if not self.validate():
+            return True
+        if self._token_expire <= 0:
+            # cannot parse exp, fall back to always refresh
+            return True
+        return time.time() >= self._token_expire - self.TOKEN_REFRESH_AHEAD
+
     def token_decode(self):
         if not self.validate():
             return dict()
         part1, part2, part3 = self.access_token.split('.')
-        part2 += '='*(4-(len(part2)%4))
+        part2 += '='*((4-(len(part2)%4))%4)
         info = json.loads(base64.b64decode(part2).decode('utf-8'))
         return info
     
@@ -1661,8 +1777,11 @@ class Token():
         return True
     
     async def async_refresh_token(self, hass):
-        api = CloudAPI(hass)
+        api = CloudAPI(hass, self.client_id)
         reauth_flag = False
+        if not self.needs_refresh:
+            _LOGGER.debug('access token still fresh, skip refresh')
+            return
         if not self.validate():
             reauth_flag = True
             _LOGGER.debug('invalid token')
@@ -1670,7 +1789,7 @@ class Token():
         else:
             error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
             if error == 'lt/new_device_alert':
-                if await async_login_new_client(hass, self.access_token):
+                if await async_login_new_client(hass, self.access_token, self.client_id):
                     error, resp = await async_request_error_process(api.async_refresh_token, self.access_token, self.refresh_token)
             elif error == 'authorize/refreshing_fail':
                 reauth_flag = True

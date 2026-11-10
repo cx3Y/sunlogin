@@ -1,232 +1,232 @@
 {
-    "entity":{
+    "entity": {
         "sensor": {
-            "power":{
-                "name":"当前功率"
+            "power": {
+                "name": "当前功率"
             },
-            "current":{
-                "name":"当前电流"
+            "current": {
+                "name": "当前电流"
             },
-            "voltage":{
-                "name":"当前电压"
+            "voltage": {
+                "name": "当前电压"
             },
-            "electricity_hour":{
-                "name":"小时电量"
+            "electricity_hour": {
+                "name": "小时电量"
             },
-            "electricity_day":{
-                "name":"今日电量"
+            "electricity_day": {
+                "name": "今日电量"
             },
-            "electricity_week":{
-                "name":"本周电量"
+            "electricity_week": {
+                "name": "本周电量"
             },
-            "electricity_month":{
-                "name":"本月电量"
+            "electricity_month": {
+                "name": "本月电量"
             },
-            "electricity_lastmonth":{
-                "name":"上月电量"
+            "electricity_lastmonth": {
+                "name": "上月电量"
             },
-            "sub_power0":{
-                "name":"当前功率(插孔1)"
+            "sub_power0": {
+                "name": "当前功率(插孔1)"
             },
-            "sub_power1":{
-                "name":"当前功率(插孔2)"
+            "sub_power1": {
+                "name": "当前功率(插孔2)"
             },
-            "sub_power2":{
-                "name":"当前功率(插孔3)"
+            "sub_power2": {
+                "name": "当前功率(插孔3)"
             },
-            "sub_power3":{
-                "name":"当前功率(插孔4)"
+            "sub_power3": {
+                "name": "当前功率(插孔4)"
             },
-            "sub_power4":{
-                "name":"当前功率(插孔5)"
+            "sub_power4": {
+                "name": "当前功率(插孔5)"
             },
-            "sub_power5":{
-                "name":"当前功率(插孔6)"
+            "sub_power5": {
+                "name": "当前功率(插孔6)"
             },
-            "sub_power6":{
-                "name":"当前功率(插孔7)"
+            "sub_power6": {
+                "name": "当前功率(插孔7)"
             },
-            "sub_power7":{
-                "name":"当前功率(插孔8)"
+            "sub_power7": {
+                "name": "当前功率(插孔8)"
             },
-            "sub_current0":{
-                "name":"当前电流(插孔1)"
+            "sub_current0": {
+                "name": "当前电流(插孔1)"
             },
-            "sub_current1":{
-                "name":"当前电流(插孔2)"
+            "sub_current1": {
+                "name": "当前电流(插孔2)"
             },
-            "sub_current2":{
-                "name":"当前电流(插孔3)"
+            "sub_current2": {
+                "name": "当前电流(插孔3)"
             },
-            "sub_current3":{
-                "name":"当前电流(插孔4)"
+            "sub_current3": {
+                "name": "当前电流(插孔4)"
             },
-            "sub_current4":{
-                "name":"当前电流(插孔5)"
+            "sub_current4": {
+                "name": "当前电流(插孔5)"
             },
-            "sub_current5":{
-                "name":"当前电流(插孔6)"
+            "sub_current5": {
+                "name": "当前电流(插孔6)"
             },
-            "sub_current6":{
-                "name":"当前电流(插孔7)"
+            "sub_current6": {
+                "name": "当前电流(插孔7)"
             },
-            "sub_current7":{
-                "name":"当前电流(插孔8)"
+            "sub_current7": {
+                "name": "当前电流(插孔8)"
             },
-            "sub_electricity_hour0":{
-                "name":"插孔1 小时电量"
+            "sub_electricity_hour0": {
+                "name": "插孔1 小时电量"
             },
-            "sub_electricity_hour1":{
-                "name":"插孔2 小时电量"
+            "sub_electricity_hour1": {
+                "name": "插孔2 小时电量"
             },
-            "sub_electricity_hour2":{
-                "name":"插孔3 小时电量"
+            "sub_electricity_hour2": {
+                "name": "插孔3 小时电量"
             },
-            "sub_electricity_hour3":{
-                "name":"插孔4 小时电量"
+            "sub_electricity_hour3": {
+                "name": "插孔4 小时电量"
             },
-            "sub_electricity_hour4":{
-                "name":"插孔5 小时电量"
+            "sub_electricity_hour4": {
+                "name": "插孔5 小时电量"
             },
-            "sub_electricity_hour5":{
-                "name":"插孔6 小时电量"
+            "sub_electricity_hour5": {
+                "name": "插孔6 小时电量"
             },
-            "sub_electricity_hour6":{
-                "name":"插孔7 小时电量"
+            "sub_electricity_hour6": {
+                "name": "插孔7 小时电量"
             },
-            "sub_electricity_hour7":{
-                "name":"插孔8 小时电量"
+            "sub_electricity_hour7": {
+                "name": "插孔8 小时电量"
             },
-            "sub_electricity_day0":{
-                "name":"插孔1 今日电量"
+            "sub_electricity_day0": {
+                "name": "插孔1 今日电量"
             },
-            "sub_electricity_day1":{
-                "name":"插孔2 今日电量"
+            "sub_electricity_day1": {
+                "name": "插孔2 今日电量"
             },
-            "sub_electricity_day2":{
-                "name":"插孔3 今日电量"
+            "sub_electricity_day2": {
+                "name": "插孔3 今日电量"
             },
-            "sub_electricity_day3":{
-                "name":"插孔4 今日电量"
+            "sub_electricity_day3": {
+                "name": "插孔4 今日电量"
             },
-            "sub_electricity_day4":{
-                "name":"插孔5 今日电量"
+            "sub_electricity_day4": {
+                "name": "插孔5 今日电量"
             },
-            "sub_electricity_day5":{
-                "name":"插孔6 今日电量"
+            "sub_electricity_day5": {
+                "name": "插孔6 今日电量"
             },
-            "sub_electricity_day6":{
-                "name":"插孔7 今日电量"
+            "sub_electricity_day6": {
+                "name": "插孔7 今日电量"
             },
-            "sub_electricity_day7":{
-                "name":"插孔8 今日电量"
+            "sub_electricity_day7": {
+                "name": "插孔8 今日电量"
             },
-            "sub_electricity_week0":{
-                "name":"插孔1 本周电量"
+            "sub_electricity_week0": {
+                "name": "插孔1 本周电量"
             },
-            "sub_electricity_week1":{
-                "name":"插孔2 本周电量"
+            "sub_electricity_week1": {
+                "name": "插孔2 本周电量"
             },
-            "sub_electricity_week2":{
-                "name":"插孔3 本周电量"
+            "sub_electricity_week2": {
+                "name": "插孔3 本周电量"
             },
-            "sub_electricity_week3":{
-                "name":"插孔4 本周电量"
+            "sub_electricity_week3": {
+                "name": "插孔4 本周电量"
             },
-            "sub_electricity_week4":{
-                "name":"插孔5 本周电量"
+            "sub_electricity_week4": {
+                "name": "插孔5 本周电量"
             },
-            "sub_electricity_week5":{
-                "name":"插孔6 本周电量"
+            "sub_electricity_week5": {
+                "name": "插孔6 本周电量"
             },
-            "sub_electricity_week6":{
-                "name":"插孔7 本周电量"
+            "sub_electricity_week6": {
+                "name": "插孔7 本周电量"
             },
-            "sub_electricity_week7":{
-                "name":"插孔8 本周电量"
+            "sub_electricity_week7": {
+                "name": "插孔8 本周电量"
             },
-            "sub_electricity_month0":{
-                "name":"插孔1 本月电量"
+            "sub_electricity_month0": {
+                "name": "插孔1 本月电量"
             },
-            "sub_electricity_month1":{
-                "name":"插孔2 本月电量"
+            "sub_electricity_month1": {
+                "name": "插孔2 本月电量"
             },
-            "sub_electricity_month2":{
-                "name":"插孔3 本月电量"
+            "sub_electricity_month2": {
+                "name": "插孔3 本月电量"
             },
-            "sub_electricity_month3":{
-                "name":"插孔4 本月电量"
+            "sub_electricity_month3": {
+                "name": "插孔4 本月电量"
             },
-            "sub_electricity_month4":{
-                "name":"插孔5 本月电量"
+            "sub_electricity_month4": {
+                "name": "插孔5 本月电量"
             },
-            "sub_electricity_month5":{
-                "name":"插孔6 本月电量"
+            "sub_electricity_month5": {
+                "name": "插孔6 本月电量"
             },
-            "sub_electricity_month6":{
-                "name":"插孔7 本月电量"
+            "sub_electricity_month6": {
+                "name": "插孔7 本月电量"
             },
-            "sub_electricity_month7":{
-                "name":"插孔8 本月电量"
+            "sub_electricity_month7": {
+                "name": "插孔8 本月电量"
             },
-            "sub_electricity_lastmonth0":{
-                "name":"插孔1 上月电量"
+            "sub_electricity_lastmonth0": {
+                "name": "插孔1 上月电量"
             },
-            "sub_electricity_lastmonth1":{
-                "name":"插孔2 上月电量"
+            "sub_electricity_lastmonth1": {
+                "name": "插孔2 上月电量"
             },
-            "sub_electricity_lastmonth2":{
-                "name":"插孔3 上月电量"
+            "sub_electricity_lastmonth2": {
+                "name": "插孔3 上月电量"
             },
-            "sub_electricity_lastmonth3":{
-                "name":"插孔4 上月电量"
+            "sub_electricity_lastmonth3": {
+                "name": "插孔4 上月电量"
             },
-            "sub_electricity_lastmonth4":{
-                "name":"插孔5 上月电量"
+            "sub_electricity_lastmonth4": {
+                "name": "插孔5 上月电量"
             },
-            "sub_electricity_lastmonth5":{
-                "name":"插孔6 上月电量"
+            "sub_electricity_lastmonth5": {
+                "name": "插孔6 上月电量"
             },
-            "sub_electricity_lastmonth6":{
-                "name":"插孔7 上月电量"
+            "sub_electricity_lastmonth6": {
+                "name": "插孔7 上月电量"
             },
-            "sub_electricity_lastmonth7":{
-                "name":"插孔8 上月电量"
+            "sub_electricity_lastmonth7": {
+                "name": "插孔8 上月电量"
             }
         },
         "switch": {
-            "led":{
-                "name":"指示灯"
+            "led": {
+                "name": "指示灯"
             },
-            "def_st":{
-                "name":"断电记忆"
+            "def_st": {
+                "name": "断电记忆"
             },
-            "relay0":{
-                "name":"开关1"
+            "relay0": {
+                "name": "开关1"
             },
-            "relay1":{
-                "name":"开关2"
+            "relay1": {
+                "name": "开关2"
             },
-            "relay2":{
-                "name":"开关3"
+            "relay2": {
+                "name": "开关3"
             },
-            "relay3":{
-                "name":"开关4"
+            "relay3": {
+                "name": "开关4"
             },
-            "relay4":{
-                "name":"开关5"
+            "relay4": {
+                "name": "开关5"
             },
-            "relay5":{
-                "name":"开关6"
+            "relay5": {
+                "name": "开关6"
             },
-            "relay6":{
-                "name":"开关7"
+            "relay6": {
+                "name": "开关7"
             },
-            "relay7":{
-                "name":"开关8"
+            "relay7": {
+                "name": "开关8"
             },
-            "remote":{
-                "name":"远程控制"
+            "remote": {
+                "name": "远程控制"
             }
         }
     },
@@ -234,7 +234,9 @@
         "abort": {
             "already_configured": "设备已配置。",
             "unsupported_device_type": "不支持的设备类型！",
-            "reauth_successful": "验证成功"
+            "reauth_successful": "验证成功",
+            "cannot_connect": "无法连接设备，请确认地址是否正确。",
+            "qrcode_timeout": "扫码登录超时，请重试。"
         },
         "error": {
             "authentication_failed": "身份验证失败。\n{msg}",
@@ -242,7 +244,8 @@
             "cannot_connect": "无法连接到设备，验证地址是否正确。",
             "invalid_auth": "无法使用密码进行身份验证，验证用户名和密码是否正确。",
             "unknown": "出现未知错误，有关详细信息，请参阅日志。",
-            "switch_already_configured": "已配置具有此ID的开关。"
+            "switch_already_configured": "已配置具有此ID的开关。",
+            "new_device_verify_failed": "校验失败，请检查验证码后重试。"
         },
         "progress": {
             "qrcode1": "正在加载二维码，大约需要10-20秒。",
@@ -304,6 +307,21 @@
                     "voltage": "电压",
                     "add_another_switch": "添加另一个开关"
                 }
+            },
+            "new_device_verify": {
+                "title": "新设备验证",
+                "description": "该账号正在新设备上登录，请选择验证码接收方式。\n绑定手机：{mobile}\n绑定邮箱：{email}",
+                "menu_options": {
+                    "send_by_mobile": "通过手机短信发送验证码",
+                    "send_by_email": "通过邮箱发送验证码"
+                }
+            },
+            "new_device_code": {
+                "title": "新设备验证",
+                "description": "验证码已通过{method}发送至 {account}，请输入验证码。",
+                "data": {
+                    "verify_code": "验证码"
+                }
             }
         }
     },
@@ -311,31 +329,24 @@
         "step": {
             "init": {
                 "title": "向日葵设置",
-                "description": "修改向日葵设备更新间隔和设置",
+                "description": "调整向日葵集成的行为。",
                 "data": {
-                    "add_device": "添加设备",
-                    "edit_device": "编辑设备",
-                    "delete_device": "删除设备",
-                    "setup_cloud": "重新配置云服务账户",
-                    "remote_update_interval": "云服务更新间隔",
-                    "local_update_interval": "局域网更新间隔",
-                    "power_consumes_update_interval": "用电统计更新间隔",
-                    "config_update_interval": "配置存储间隔",
-                    "token_update_interval": "Token 刷新间隔",
-                    "enable_devices_update": "启用设备自动同步",
-                    "devices_update_interval": "设备同步间隔",
-                    "enable_dns_injector": "启用 DNS 注入",
-                    "dns_server": "DNS 服务器",
-                    "dns_update_interval": "DNS 更新间隔",
+                    "remote_update_interval": "远程更新间隔（秒，最小40）",
+                    "local_update_interval": "本地更新间隔（秒，最小10）",
+                    "power_consumes_update_interval": "电量数据更新间隔（秒）",
+                    "config_update_interval": "配置持久化间隔（秒）",
+                    "token_update_interval": "Token 刷新间隔（秒）",
+                    "unavailable_after_retries": "连续失败 N 次后标记设备不可用",
+                    "enable_devices_update": "自动从云端同步设备列表",
+                    "devices_update_interval": "设备列表更新间隔（秒）",
+                    "enable_dns_injector": "启用 DNS 注入（直连插座 API IP）",
+                    "dns_server": "DNS 服务器（DoH）",
+                    "dns_update_interval": "DNS 更新间隔（秒）",
                     "enable_proxy": "启用代理",
                     "proxy_server": "代理服务器",
                     "enable_encrypt_log": "启用加密日志",
-                    "unavailable_after_retries": "超过重试次数后，将设备标记为不可用"
+                    "user_agent": "User-Agent（默认 UA 被服务端封禁时可自行更换）"
                 }
-            },
-            "yaml_import": {
-                "title": "不支持",
-                "description": "通过 YAML 配置时，无法编辑选项。"
             }
         }
     },

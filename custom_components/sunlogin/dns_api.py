@@ -387,7 +387,6 @@ class DNS(HTTPRequest):
             await self.async_query(domain)
 
     async def async_make_request_by_requests(self, method, url, data=None, headers=None, **kwargs):
-        # session = self.session
         if method == "POST":
             func = functools.partial(
                 self.session.post,
@@ -399,6 +398,8 @@ class DNS(HTTPRequest):
                 proxies=self.proxies,
                 **kwargs
             )
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
 
         resp = await self.hass.async_add_executor_job(func)
         return resp

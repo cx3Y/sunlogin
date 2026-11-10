@@ -1,4 +1,3 @@
-from datetime import timedelta
 import logging
 
 from homeassistant.components.sensor import DOMAIN as ENTITY_DOMAIN
@@ -9,15 +8,11 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
 )
 from homeassistant.const import (
-    CONF_DEVICES, 
-    CONF_PLATFORM, 
-    CONF_UNIT_OF_MEASUREMENT, 
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfPower,
     UnitOfEnergy,
 )
-import async_timeout
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, CONFIG, SL_DEVICES, normalize_id_part

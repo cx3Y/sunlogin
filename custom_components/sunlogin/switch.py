@@ -1,4 +1,3 @@
-from datetime import timedelta
 import logging
 
 from homeassistant.components.switch import DOMAIN as ENTITY_DOMAIN
@@ -7,7 +6,6 @@ from homeassistant.components.switch import (
     SwitchEntityDescription,
     SwitchDeviceClass,
 )
-from homeassistant.const import CONF_DEVICES, CONF_PLATFORM
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, CONFIG, SL_DEVICES, normalize_id_part
@@ -200,77 +198,3 @@ class DeviceSwitch(SwitchEntity, RestoreEntity):
         """Return if device is available or not."""
         return self.device.available(self.dp_id)
         # return self.device.update_manager.available
-
-
-
-class FakeSunLoginHaSwitch(SwitchEntity):
-    """Tuya Switch Device."""
-
-
-    # ToggleEntity
-
-    def __init__(
-        self,
-        device,
-        switchid,
-        **kwargs,
-    ):
-        self.device = device
-        self.dp_id = switchid
-        self._state = False
-        self.entity_id = "switch.Test007_001122334455" + self.dp_id
-        _LOGGER.debug("Initialized switch [%s]", self.dp_id)
-
-
-    async def async_update(self):
-        pass
-
-    @property
-    def is_on(self) -> bool:
-        """Return true if switch is on."""
-        # return self._state
-        return self._state
-
-    def turn_on(self, **kwargs) -> None:
-        """Turn the switch on."""
-        self._state = True
-
-    def turn_off(self, **kwargs) -> None:
-        """Turn the device off."""
-        self._state = False
-
-    @property
-    def device_info(self):
-        """Return device information for the device registry."""
-        model = "Test007"
-        return {
-            "identifiers": {
-                # Serial numbers are unique identifiers within a specific domain
-                (DOMAIN, '001122334455')
-            },
-            "name": "测试设备",
-            "manufacturer": "SunLogin",
-            "model": f"{model} (001122334455)",
-            "sw_version": "0.0.1",
-        }
-
-    @property
-    def name(self):
-        """Get name of Sunlogin entity."""
-        return self.dp_id
-
-    @property
-    def should_poll(self):
-        """Return if platform should poll for updates."""
-        return True
-
-    @property
-    def unique_id(self):
-        """Return unique device identifier."""
-        return f"sunlogin_001122334455_{self.dp_id}"
-
-    @property
-    def available(self):
-        """Return if device is available or not."""
-        return  self.dp_id not in self.device.unavailable
-        # return True

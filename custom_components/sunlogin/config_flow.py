@@ -1,26 +1,14 @@
 """Configuration flows."""
 
-import errno
 import logging
 import asyncio
-import aiohttp
-import time
-import pyqrcode
-import io
-import base64
-from importlib import import_module
-from datetime import timedelta
+import uuid
 
 import homeassistant.helpers.config_validation as cv
-import homeassistant.helpers.entity_registry as er
 import voluptuous as vol
 from homeassistant import config_entries, core, exceptions
 from homeassistant.const import (
-    CONF_DEVICE_ID,
     CONF_DEVICES,
-    CONF_ENTITIES,
-    CONF_FRIENDLY_NAME,
-    CONF_PLATFORM,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
     CONF_PASSWORD,
@@ -29,7 +17,15 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from .sunlogin import SunLogin, async_guess_model, make_qrcode_base64_v2, device_filter, config_options
-from .sunlogin_api import CloudAPI, CloudAPI_V2, change_cliend_id_by_seed, PlugAPI_V2_FAST
+from .sunlogin_api import (
+    CloudAPI,
+    CloudAPI_V2,
+    change_user_agent,
+    PlugAPI_V2_FAST,
+    DEFAULT_USER_AGENT,
+    VERIFY_METHOD_MOBILE,
+    VERIFY_METHOD_EMAIL,
+)
 from .dns_api import change_dns_server
 from .updater import (
     DEFAULT_UPDATE_INTERVAL,
@@ -44,6 +40,8 @@ from .const import (
     CONF_USER_INPUT,
     CONF_SMSCODE,
     CONF_LOGIN_METHOD,
+    CONF_CLIENT_ID,
+    CONF_USER_AGENT,
     CONF_REMOTE_UPDATE_INTERVAL,
     CONF_LOCAL_UPDATE_INTERVAL,
     CONF_POWER_CONSUMES_UPDATE_INTERVAL,
@@ -79,6 +77,9 @@ _LOGGER = logging.getLogger(__name__)
 
 ENTRIES_VERSION = 1
 
+# max qr-code rounds (generate/scan/login) before aborting the flow
+QR_MAX_FAIL_COUNT = 3
+
 CONFIGURE_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_REMOTE_UPDATE_INTERVAL, default=DEFAULT_UPDATE_INTERVAL.remote.seconds): int,
@@ -95,6 +96,14 @@ CONFIGURE_SCHEMA = vol.Schema(
         vol.Required(CONF_ENABLE_PROXY, default=DEFAULT_ENABLE_PROXY): bool,
         vol.Required(CONF_PROXY_SERVER, default=DEFAULT_PROXY_SERVER): cv.string,
         vol.Required(CONF_ENABLE_ENCRYPT_LOG, default=DEFAULT_ENABLE_ENCRYPT_LOG): bool,
+        vol.Optional(CONF_USER_AGENT, default=DEFAULT_USER_AGENT): cv.string,
+    }
+)
+
+# New-device verification (lt/new_device_alert): input the received code
+NEW_DEVICE_CODE_SCHEMA = vol.Schema(
+    {
+        vol.Required("verify_code"): cv.string,
     }
 )
 
@@ -158,12 +167,17 @@ def schema_defaults(schema, dps_list=None, **defaults):
 
 async def attempt_connection(sunlogin, method = 1, *args):
     """Create device."""
+    NEW_DEVICE_ALERT = SunLogin.NEW_DEVICE_ALERT
     if method == 1:
         res = await sunlogin.async_get_access_token_by_password(*args)
     elif method == 2:
         res = await sunlogin.async_get_access_token_by_sms(*args)
     elif method == 3:
         res = await sunlogin.async_get_access_token_by_qrcode(*args)
+    if res == NEW_DEVICE_ALERT:
+        # 202 lt/new_device_alert: let the flow drive the verify steps
+        _LOGGER.info("Cloud API requires new-device verification")
+        return {"reason": "new_device_verify", "msg": NEW_DEVICE_ALERT}
     if res != "ok":
         _LOGGER.error("Cloud API connection failed: %s", res)
         return {"reason": "authentication_failed", "msg": res}
@@ -176,6 +190,11 @@ async def attempt_connection(sunlogin, method = 1, *args):
     _LOGGER.info("Cloud API connection succeeded.")
 
     return {}
+
+
+def new_client_id():
+    """Generate a new persisted client id (device identity for the cloud)."""
+    return str(uuid.uuid4())
 
 
 class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -195,16 +214,31 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.qrdata = {}
         self.qrstep = 0
         self.qrtask = None
+        self.qr_fail_count = 0
         self.api_v2 = None
         self.sunlogin = None
         self.reauth_entry_id = None
+        # persisted per-entry device identity (EX-ClientId); inherited from
+        # the reauth entry when present so the cloud keeps the terminal
+        self.client_id = new_client_id()
+        # new-device verification state
+        self.verify_account = None
+        self.verify_method = None
+        self.pending_user_input = None
+
+    def _init_sunlogin(self, client_id=None):
+        """(Re)create the api instances with the current client id."""
+        self.api_v2 = CloudAPI_V2(self.hass)
+        self.sunlogin = SunLogin(self.hass, client_id or self.client_id)
 
     async def async_step_reauth(self, data):
         """Handle configuration by re-auth."""
 
         self.reauth_entry_id = self.context["entry_id"]
-        self.api_v2 = CloudAPI_V2(self.hass)
-        self.sunlogin = SunLogin(self.hass)
+        entry = self.hass.config_entries.async_get_entry(self.reauth_entry_id)
+        # keep the previous device identity, fall back to a fresh one
+        self.client_id = (entry.data.get(CONF_CLIENT_ID) if entry else None) or self.client_id
+        self._init_sunlogin()
 
         return self.async_show_menu(
             step_id="reauth",
@@ -217,14 +251,8 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
-        errors = {}
-        placeholders = {}
-        self.api_v2 = CloudAPI_V2(self.hass)
-        self.sunlogin = SunLogin(self.hass)
+        self._init_sunlogin()
 
-        if user_input is not None:
-            pass
-        
         return self.async_show_menu(
             step_id="user",
             menu_options=[
@@ -256,6 +284,12 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             res = await attempt_connection(self.sunlogin, 1, user_input.get(CONF_USERNAME), user_input.get(CONF_PASSWORD))
 
+            if res.get("reason") == "new_device_verify":
+                # 202 lt/new_device_alert: go into the verification steps
+                self.verify_account = user_input.get(CONF_USERNAME)
+                self.pending_user_input = user_input
+                return await self.async_step_new_device_verify()
+
             if not res:
                 return await self._create_entry(user_input)
             errors["base"] = res["reason"]
@@ -275,6 +309,11 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             res = await attempt_connection(self.sunlogin, 2, user_input.get(CONF_USERNAME), user_input.get(CONF_CODE))
 
+            if res.get("reason") == "new_device_verify":
+                self.verify_account = user_input.get(CONF_USERNAME)
+                self.pending_user_input = user_input
+                return await self.async_step_new_device_verify()
+
             if not res:
                 return await self._create_entry(user_input)
             errors["base"] = res["reason"]
@@ -287,9 +326,76 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders=placeholders,
         )
 
+    # --- new-device verification (lt/new_device_alert) ---
+
+    async def async_step_new_device_verify(self, user_input=None):
+        """Show the menu to pick the verify-code channel."""
+        alert = self.sunlogin.new_device_alert or {}
+        return self.async_show_menu(
+            step_id="new_device_verify",
+            menu_options=["send_by_mobile", "send_by_email"],
+            description_placeholders={
+                "mobile": alert.get('mobile', ''),
+                "email": alert.get('email', ''),
+            },
+        )
+
+    async def async_step_send_by_mobile(self, user_input=None):
+        return await self._send_verify_code(VERIFY_METHOD_MOBILE)
+
+    async def async_step_send_by_email(self, user_input=None):
+        return await self._send_verify_code(VERIFY_METHOD_EMAIL)
+
+    async def _send_verify_code(self, method):
+        self.verify_method = method
+        error = await self.sunlogin.async_new_device_send_code(self.verify_account, method)
+        if error != "ok":
+            return self.async_show_menu(
+                step_id="new_device_verify",
+                menu_options=["send_by_mobile", "send_by_email"],
+                description_placeholders={
+                    "mobile": self.sunlogin.new_device_alert.get('mobile', '') if self.sunlogin.new_device_alert else '',
+                    "email": self.sunlogin.new_device_alert.get('email', '') if self.sunlogin.new_device_alert else '',
+                },
+            )
+        return self.async_show_form(
+            step_id="new_device_code",
+            data_schema=NEW_DEVICE_CODE_SCHEMA,
+            description_placeholders={"method": method, "account": self.verify_account},
+        )
+
+    async def async_step_new_device_code(self, user_input=None):
+        errors = {}
+        placeholders = {"method": self.verify_method or VERIFY_METHOD_MOBILE, "account": self.verify_account or ''}
+
+        if user_input is not None:
+            code = (user_input.get("verify_code") or '').strip()
+            res = await self.sunlogin.async_new_device_check_code(self.verify_account, self.verify_method, code)
+            if res == "ok":
+                # refresh the device list with the new token before entry creation
+                if await self.sunlogin.async_get_devices_list() != "ok":
+                    _LOGGER.warning("device list fetch failed after new-device verification")
+                if self.pending_user_input is not None:
+                    return await self._create_entry(self.pending_user_input)
+                return await self._create_entry({})
+            errors["base"] = "new_device_verify_failed"
+
+        return self.async_show_form(
+            step_id="new_device_code",
+            data_schema=NEW_DEVICE_CODE_SCHEMA,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
     async def async_step_qrcode(self, user_input=None):
         if not self.qrtask:
             if self.qrstep == 0:
+                # bound the retry loop: give up after too many failed rounds
+                if self.qr_fail_count >= QR_MAX_FAIL_COUNT:
+                    self.qr_fail_count = 0
+                    self.qrstep = 0
+                    self.qrdata = {}
+                    return self.async_abort(reason="qrcode_timeout")
                 _LOGGER.debug("Generating QR code...")
                 self.qrtask = self.hass.async_create_task(self.make_qrcode_img())
                 return self.async_show_progress(
@@ -334,15 +440,22 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_progress_done(next_step_id="qrcode")
 
     async def make_qrcode_img(self):
-        resp =  await self.api_v2.async_get_qrdata()
-        if not resp.ok:
-            # raise error
-            pass
-        r_json = resp.json()
-        qrdata = make_qrcode_base64_v2(r_json)
-        if qrdata is not None:
-            self.qrdata = qrdata
-            self.qrstep += 1
+        try:
+            resp =  await self.api_v2.async_get_qrdata()
+            if not resp.ok:
+                _LOGGER.error("Get qrcode failed, status: %s", resp.status_code)
+                self.qr_fail_count += 1
+            else:
+                r_json = resp.json()
+                qrdata = make_qrcode_base64_v2(r_json)
+                if qrdata is not None:
+                    self.qrdata = qrdata
+                    self.qrstep += 1
+                else:
+                    self.qr_fail_count += 1
+        except Exception as e:
+            _LOGGER.error("make_qrcode_img failed: %s", e)
+            self.qr_fail_count += 1
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
@@ -350,7 +463,6 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def check_qrcode_status(self):
         failed_count = 0
         key = self.qrdata.get('key')
-        # await asyncio.sleep(2)
         tick_count = 0
         while failed_count < 3:
             await asyncio.sleep(3)
@@ -360,29 +472,29 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 break
             try:
                 resp = await self.api_v2.async_get_qrstatus(key)
-            except:
+                if not resp.ok:
+                    failed_count += 1
+                    continue
+                r_json = resp.json()
+                status = r_json.get('status')
+                if status is None:
+                    failed_count += 2
+                    continue
+            except Exception:
                 failed_count += 1
                 continue
-            if not resp.ok:
-                failed_count += 1
 
-            r_json = resp.json()
-            try:
-                status = r_json['status']
-            except:
-                failed_count += 2
-                continue
-            
             if status == 2:
                 self.qrstep += 1
                 self.qrdata['secret'] = r_json.get('secret')
                 break
-            
 
         if failed_count >= 3:
-            #raise error
-            self.qrstep -= 1
-        
+            # scan not confirmed in time: restart the qr round
+            self.qr_fail_count += 1
+            self.qrstep = 0
+            self.qrdata = {}
+
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
@@ -390,23 +502,33 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def qrcode_finish(self):
         res = await attempt_connection(self.sunlogin, 3, self.qrdata.get('secret'))
 
-        self.qrstep += 1
+        if res and res.get("reason"):
+            # login or device-list failed: do NOT advance to entry creation,
+            # restart the qr flow so the user can retry (avoids zombie entries
+            # with an empty token and a burned unique_id)
+            _LOGGER.error("qrcode login failed: %s", res)
+            self.qr_fail_count += 1
+            self.qrstep = 0
+            self.qrdata = {}
+        else:
+            self.qrstep += 1
+
         self.hass.async_create_task(
             self.hass.config_entries.flow.async_configure(flow_id=self.flow_id)
         )
 
     async def _create_entry(self, user_input):
         """Register new entry."""
-        # if self._async_current_entries():
-        #     return self.async_abort(reason="already_configured")
         unique_id = self.sunlogin.userid if self.sunlogin.userid is not None else user_input.get(CONF_USERNAME)
         await self.async_set_unique_id(str(unique_id))
+        self._abort_if_unique_id_configured()
 
         devices = device_filter(self.sunlogin.device_list)
         
         entry = {
             CONF_USER_INPUT: user_input, 
             CONF_DEVICES: devices, 
+            CONF_CLIENT_ID: self.client_id,
             **self.sunlogin.token.config
         }
 
@@ -414,6 +536,7 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             reauth_entry = self.hass.config_entries.async_get_entry(self.reauth_entry_id)
             data = {**reauth_entry.data}
             data.update(self.sunlogin.token.config)
+            data[CONF_CLIENT_ID] = self.client_id
             self.hass.config_entries.async_update_entry(reauth_entry, data=data)
             self.hass.async_create_task(
                 self.hass.config_entries.async_reload(self.reauth_entry_id)
@@ -426,20 +549,24 @@ class SunLoginConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
     
     async def _create_entry_by_ip(self, user_input):
-        """Register new entry."""
-        # if self._async_current_entries():
-        #     return self.async_abort(reason="already_configured")
-
+        """Register new entry for a local (ip) device."""
         await self.async_set_unique_id(user_input.get(CONF_IP_ADDRESS))
-        sn, model = await async_guess_model(self.hass, user_input.get(CONF_IP_ADDRESS))
+        self._abort_if_unique_id_configured()
+        try:
+            sn, model = await async_guess_model(self.hass, user_input.get(CONF_IP_ADDRESS))
+        except Exception as e:
+            _LOGGER.error("Probe local device failed: %s", e)
+            sn, model = None, None
+        if sn is None or model is None:
+            return self.async_abort(
+                reason="cannot_connect",
+                description_placeholders={"ip": user_input.get(CONF_IP_ADDRESS, "")},
+            )
         device_name = "{model}({sn})".format(model=model, sn=sn[:4])
         device_conf = {CONF_DEVICE_IP_ADDRESS: user_input.get(CONF_IP_ADDRESS).strip(), CONF_DEVICE_MODEL: model, CONF_DEVICE_NAME: device_name}
-        if sn is not None:
-            device_conf.update({CONF_DEVICE_SN: sn})
-            devices = {sn: device_conf}
-        else:
-            devices = {"__sn__": device_conf}
-        
+        device_conf.update({CONF_DEVICE_SN: sn})
+        devices = {sn: device_conf}
+
         entry = {CONF_USER_INPUT: user_input, CONF_DEVICES: devices}
         return self.async_create_entry(
             title=user_input.get(CONF_IP_ADDRESS),
@@ -463,13 +590,14 @@ class SunLoginOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):
         """Manage basic options."""
-        # device_id = self.config_entry.data[CONF_DEVICE_ID]
         defaults = dict()
         defaults.update(self.config_entry.options)
 
         if user_input is not None:
             data = defaults.copy()
             diff = dict(set(user_input.items()) - set(data.items()))
+            if (user_agent := diff.get(CONF_USER_AGENT)) is not None and user_agent.strip():
+                change_user_agent(user_agent.strip())
             options = config_options(self.hass, self.config_entry, diff)
             data.update(options)
             
@@ -479,26 +607,6 @@ class SunLoginOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=schema_defaults(CONFIGURE_SCHEMA, **defaults),
         )
-
-
-    async def async_step_add_device(self, user_input=None):
-        scan_interval = user_input.get(CONF_SCAN_INTERVAL)
-        _LOGGER.debug("scan_interval: ", scan_interval)
-
-
-    async def async_step_yaml_import(self, user_input=None):
-        """Manage YAML imports."""
-        _LOGGER.error(
-            "Configuration via YAML file is no longer supported by this integration."
-        )
-        # if user_input is not None:
-        #     return self.async_create_entry(title="", data={})
-        # return self.async_show_form(step_id="yaml_import")
-
-    @property
-    def current_entity(self):
-        """Existing configuration for entity currently being edited."""
-        return self.entities[len(self.device_data[CONF_ENTITIES])]
 
 
 class CannotConnect(exceptions.HomeAssistantError):
