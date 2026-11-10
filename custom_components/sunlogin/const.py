@@ -1,4 +1,5 @@
 """Constants for sunlogin integration."""
+import re
 
 DOMAIN = "sunlogin"
 CLOUD_DATA = "cloud_data"
@@ -111,3 +112,13 @@ PLUG_DOMAIN = "slapi.oray.net"
 PLUG_URL = HTTPS_SUFFIX + PLUG_DOMAIN
 
 PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDFlHURNCn+GpoC5XY/d3gHPcrq\nO444eg3tOnMceGpnNMPzSLxuOVi1nsbRDaUBSTODuWLAXJJvXe6PnInVcUPA1t31\nQ5SnUBrMf1uVyhkgj1sQ7XiyeAaAoKTE/64N1iJklTraiFyMOao2zQ1cNJRM02TY\nSog4cIUfQJpjma8F7QIDAQAB\n-----END PUBLIC KEY-----"
+
+def normalize_id_part(value: str) -> str:
+    """将设备型号等字符串规范化为 HA entity_id object_id 合法片段 (仅 a-z 0-9 _).
+
+    HA 的 ``valid_entity_id`` 只接受 ``[a-z 0-9 _]``，且当集成手动设置非法
+    entity_id 时会打印 deprecation WARNING 并将在 2027.2.0 移除兜底。
+    向日葵接口返回的 model 可能含大写字母与连字符 (例如 ``C2-BLE-V3``)，
+    必须先做 normalize 才能拼装 entity_id。
+    """
+    return re.sub(r"[^a-z0-9_]", "_", value.lower()).strip("_")

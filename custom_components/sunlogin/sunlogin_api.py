@@ -398,10 +398,8 @@ class PlugAPI_V1(HTTPRequest):
     async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
-        _pc_kwargs = {}
-        if access_token:
-            _pc_kwargs['auth'] = SunloginAuth(access_token)
-        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
+        auth = SunloginAuth(access_token) if access_token else None
+        resp = await self.async_make_request_by_requests("GET", url, auth=auth)
         return resp
     
 
@@ -509,10 +507,8 @@ class PlugAPI_V2(HTTPRequest):
     async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
 
-        _pc_kwargs = {}
-        if access_token:
-            _pc_kwargs['auth'] = SunloginAuth(access_token)
-        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
+        auth = SunloginAuth(access_token) if access_token else None
+        resp = await self.async_make_request_by_requests("GET", url, auth=auth)
         return resp
     
 
@@ -637,10 +633,8 @@ class PlugAPI_V2_FAST(HTTPRequest):
     async def async_get_power_consumes(self, sn, index=0, access_token=None):
         url = f"https://sl-api.oray.com/smartplug/powerconsumes/{sn}?index={index}"
         
-        _pc_kwargs = {}
-        if access_token:
-            _pc_kwargs['auth'] = SunloginAuth(access_token)
-        resp = await self.async_make_request_by_requests("GET", url, **_pc_kwargs)
+        auth = SunloginAuth(access_token) if access_token else None
+        resp = await self.async_make_request_by_requests("GET", url, auth=auth)
         return resp
     
 
