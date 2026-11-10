@@ -569,7 +569,6 @@ def plug_electric_process(data):
         status[DP_VOLTAGE] = voltage
 
     if (current := data.get('curr')) is not None:
-        current = current // 1000
         status[DP_CURRENT] = current
 
     if (power := data.get('power')) is not None:
@@ -579,7 +578,6 @@ def plug_electric_process(data):
     if (sub_electric := data.get('sub')) is not None and isinstance(sub_electric, list):
         for index, electric in enumerate(sub_electric):
             sub_current = electric['cur']
-            sub_current = sub_current // 1000
             sub_power = electric['pwr']
             sub_power = sub_power / 1000
             status[f"sub_current{index}"] = sub_current
